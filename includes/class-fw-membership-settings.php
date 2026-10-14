@@ -101,7 +101,53 @@ class FW_Membership_Settings {
 	 * @return string
 	 */
 	public static function button_class( $secondary = false ) {
-		return trim( (string) self::get( $secondary ? 'button_class_2' : 'button_class' ) . ' fw-mbr-btn' );
+		$key = $secondary ? 'button_class_2' : 'button_class';
+		$cls = trim( (string) self::get( $key ) );
+		$def = self::defaults()[ $key ];
+		if ( '' === $cls || $def === $cls ) {
+			// Left at the default: use the site's own presets when it has no preset of that name.
+			$cls = self::preset_class( $secondary, $def );
+		}
+		return trim( $cls . ' fw-mbr-btn' );
+	}
+
+	/** @return array The site's button presets: class => name (from Theme Settings). */
+	public static function button_presets() {
+		$list = function_exists( 'fw_get_db_settings_option' ) ? fw_get_db_settings_option( 'button_colors' ) : null;
+		$out  = array();
+		foreach ( is_array( $list ) ? $list : array() as $p ) {
+			if ( ! empty( $p['color_name'] ) ) {
+				$out[ 'btn btn-' . sanitize_title_with_dashes( $p['color_name'] ) ] = array(
+					'name'   => (string) $p['color_name'],
+					'filled' => '' !== (string) ( $p['states']['default']['bg_color']['custom'] ?? '' ) || '' !== (string) ( $p['states']['default']['bg_color']['predefined'] ?? '' ),
+					'hint'   => strtolower( ( $p['slug'] ?? '' ) . ' ' . ( $p['role'] ?? '' ) . ' ' . $p['color_name'] ),
+				);
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * The preset to use for a default-set button: the default's own preset if the site has
+	 * one, else a filled preset (main) or an outlined one (second), named like it first.
+	 */
+	private static function preset_class( $secondary, $default ) {
+		$presets = self::button_presets();
+		if ( ! $presets || isset( $presets[ $default ] ) ) {
+			return $default;
+		}
+		$words = $secondary ? array( 'outline', 'secondary', 'ghost' ) : array( 'primary', 'fill', 'solid' );
+		foreach ( array( true, false ) as $by_name ) {
+			foreach ( $presets as $cls => $p ) {
+				if ( $p['filled'] === $secondary ) {
+					continue;
+				}
+				if ( ! $by_name || preg_match( '/\b(' . implode( '|', $words ) . ')\b/', $p['hint'] ) ) {
+					return $cls;
+				}
+			}
+		}
+		return $default;
 	}
 
 	/** @return string */

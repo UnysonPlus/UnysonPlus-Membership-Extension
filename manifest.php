@@ -242,7 +242,7 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.16';
+$manifest['version']    = '1.0.17';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';

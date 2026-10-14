@@ -312,13 +312,22 @@ class FW_Membership_Admin_Settings {
 					<div class="fw-mbr-fields">
 						<p class="fw-mbr-field">
 							<label for="fw-mbr-button_class"><?php esc_html_e( 'Main button classes', 'fw' ); ?></label>
-							<input type="text" id="fw-mbr-button_class" name="button_class" class="code" value="<?php echo esc_attr( $s['button_class'] ); ?>" />
+							<input type="text" id="fw-mbr-button_class" name="button_class" class="code" list="fw-mbr-button-presets" value="<?php echo esc_attr( $s['button_class'] ); ?>" />
 						</p>
 						<p class="fw-mbr-field">
 							<label for="fw-mbr-button_class_2"><?php esc_html_e( 'Second button classes', 'fw' ); ?></label>
-							<input type="text" id="fw-mbr-button_class_2" name="button_class_2" class="code" value="<?php echo esc_attr( $s['button_class_2'] ); ?>" />
+							<input type="text" id="fw-mbr-button_class_2" name="button_class_2" class="code" list="fw-mbr-button-presets" value="<?php echo esc_attr( $s['button_class_2'] ); ?>" />
 						</p>
 					</div>
+					<datalist id="fw-mbr-button-presets">
+						<?php foreach ( FW_Membership_Settings::button_presets() as $cls => $p ) : ?>
+							<option value="<?php echo esc_attr( $cls ); ?>"><?php echo esc_html( $p['name'] ); ?></option>
+						<?php endforeach; ?>
+					</datalist>
+					<?php
+					$now = array( trim( str_replace( 'fw-mbr-btn', '', FW_Membership_Settings::button_class() ) ), trim( str_replace( 'fw-mbr-btn', '', FW_Membership_Settings::button_class( true ) ) ) );
+					?>
+					<p class="fw-mbr-muted"><?php echo esc_html( sprintf( __( 'Left at the defaults, Membership picks your own presets when your theme has none of those names (a filled one for the main button, an outlined one for the second). In use now: %1$s and %2$s.', 'fw' ), $now[0], $now[1] ) ); ?></p>
 				</section>
 				<?php
 				/** More panels in Membership → Settings (saved on unysonplus_membership_save_settings). */
