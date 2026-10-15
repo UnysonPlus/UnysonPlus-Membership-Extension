@@ -14,6 +14,16 @@ $manifest['description'] = __(
 /**
  * Changelog ----------------------------------------------------------------
  *
+ * 1.0.23 - Webhooks and add-on modules. A Webhooks module (Membership -> Webhooks)
+ *         posts every membership event, payments and course events as signed JSON
+ *         (X-Webhook-Signature t=..,v1=HMAC-SHA256 of "t.body", as the other Unyson+
+ *         webhooks) to the addresses you add, from a queue worked in the background,
+ *         retrying with backoff and switching a failing endpoint off; with a test button,
+ *         per-webhook events and secret rotation. Modules from a plugin or theme now load:
+ *         an entry added with the unysonplus_membership_modules filter gives `file`, the
+ *         loader to include while it is on. FW_Membership_Webhooks::emit() and the
+ *         unysonplus_membership_webhook_events filter let a module send its own events.
+ *
  * 1.0.22 - The AI Assistant can run a membership site. Eleven more abilities: make the
  *         member pages (elements placed in the builder, settings pointed at them), switch
  *         modules, find members and give / extend / change / cancel / end / reactivate a
@@ -267,7 +277,7 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.22';
+$manifest['version']    = '1.0.23';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';

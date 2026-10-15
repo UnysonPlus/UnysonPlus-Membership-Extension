@@ -18,7 +18,11 @@ class FW_Membership_Modules {
 	const OPTION = 'fw_ext_membership_modules';
 
 	/**
-	 * @return array slug => { label, description, icon, phase, requires? (callable), auto? }
+	 * @return array slug => { label, description, icon, phase, requires? (callable), requires_text?, auto?, file? }
+	 *
+	 * An add-on (a plugin or theme) adds its own module with the unysonplus_membership_modules
+	 * filter, giving `file`: the absolute path of the PHP file to load while the module is on.
+	 * It then shows on Membership → Modules like a built-in one.
 	 */
 	public static function registry() {
 		$modules = array(
@@ -38,6 +42,7 @@ class FW_Membership_Modules {
 			'analytics'   => array( __( 'Reports', 'fw' ), __( 'Monthly recurring revenue, churn, lifetime value, trial conversion and cohorts.', 'fw' ), 'dashicons-chart-area', 9 ),
 			'security'    => array( __( 'Account security', 'fw' ), __( 'Limit simultaneous sessions, one-click login links that work once, passkeys and a login log.', 'fw' ), 'dashicons-shield', 10 ),
 			'importers'   => array( __( 'Importers', 'fw' ), __( 'Bring in members and live subscriptions from a CSV file (such as an export from another plugin), or give plans to everyone with a WordPress role or user field.', 'fw' ), 'dashicons-database-import', 10 ),
+			'webhooks'    => array( __( 'Webhooks', 'fw' ), __( 'Tell another app the moment members join, renew, cancel, pay or finish a course: signed JSON, sent in the background with retries.', 'fw' ), 'dashicons-rest-api', 12 ),
 			'courses'     => array( __( 'Courses', 'fw' ), __( 'Courses with lessons, progress, quizzes and certificates on the same access rules.', 'fw' ), 'dashicons-welcome-learn-more', 11 ),
 		);
 
@@ -67,8 +72,12 @@ class FW_Membership_Modules {
 		};
 		$out['woocommerce']['requires_text'] = __( 'Needs WooCommerce.', 'fw' );
 
-		/** Filters the module registry, for add-on modules. */
-		return (array) apply_filters( 'unysonplus_membership_modules', $out );
+		/** Filters the module registry, for add-on modules (see the docblock above). */
+		$out = (array) apply_filters( 'unysonplus_membership_modules', $out );
+		foreach ( $out as $slug => $m ) {
+			$out[ $slug ] = array_merge( array( 'label' => $slug, 'description' => '', 'icon' => 'dashicons-admin-plugins', 'phase' => 0 ), (array) $m );
+		}
+		return $out;
 	}
 
 	/**
@@ -79,7 +88,8 @@ class FW_Membership_Modules {
 	 * @return bool
 	 */
 	public static function is_available( $slug ) {
-		return file_exists( self::loader( $slug ) );
+		$file = self::loader( $slug );
+		return '' !== $file && is_file( $file );
 	}
 
 	/**
@@ -135,6 +145,11 @@ class FW_Membership_Modules {
 
 	private static function loader( $slug ) {
 		$slug = sanitize_key( $slug );
+		$reg  = self::registry();
+		if ( ! empty( $reg[ $slug ]['file'] ) ) {
+			$file = (string) $reg[ $slug ]['file'];
+			return '.php' === strtolower( substr( $file, -4 ) ) ? $file : ''; // an add-on's own loader
+		}
 		return dirname( dirname( __FILE__ ) ) . '/modules/' . $slug . '/' . $slug . '.php';
 	}
 }

@@ -46,7 +46,7 @@ if ( ! function_exists( 'fw_ext_membership_ai_register_manage' ) ) :
 
 		fw_ai_register_ability( 'membership-modules', array(
 			'label'       => __( 'Switch Membership modules on or off', 'fw' ),
-			'description' => 'Switches Membership modules on or off. on: [slugs], off: [slugs]. Slugs: payments, coupons, tax, gifts (these three need payments), drip, paywall (metered free reads), files (protected downloads), retention, groups (team plans), directory, cards, woocommerce (needs WooCommerce), analytics (Reports), security (devices, login links, passkeys, log), importers, courses. crm switches itself with the CRM extension. A module that is off loads no code; its data is kept. The change applies from the next page load. Undoable with undo_change.',
+			'description' => 'Switches Membership modules on or off. on: [slugs], off: [slugs]. Slugs: payments, coupons, tax, gifts (these three need payments), drip, paywall (metered free reads), files (protected downloads), retention, groups (team plans), directory, cards, woocommerce (needs WooCommerce), analytics (Reports), security (devices, login links, passkeys, log), importers, courses, webhooks (signed event notifications to other apps). crm switches itself with the CRM extension. A module that is off loads no code; its data is kept. The change applies from the next page load. Undoable with undo_change.',
 			'input'       => array(
 				'on'  => array( 'type' => 'array' ),
 				'off' => array( 'type' => 'array' ),

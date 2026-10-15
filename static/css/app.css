@@ -2529,3 +2529,54 @@ body.upa .fw-mbr-app {
 	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 	gap: 16px;
 }
+
+/* --- Webhooks ------------------------------------------------------------ */
+
+.fw-mbr-dl {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px 24px;
+	margin: 0 0 16px;
+}
+
+.fw-mbr-dl dt {
+	margin: 0 0 2px;
+	font-size: 12px;
+	color: var(--mbr-muted);
+}
+
+.fw-mbr-dl dd {
+	margin: 0;
+}
+
+.fw-mbr-webhook-events {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+	gap: 4px 16px;
+	margin: 6px 0;
+}
+
+.fw-mbr-webhook-events code {
+	font-size: 12px;
+	background: none;
+	padding: 0;
+}
+
+.fw-mbr-secret {
+	display: inline-block;
+	margin-top: 4px;
+	word-break: break-all;
+	user-select: all;
+}
+
+.fw-mbr-panel__head code {
+	font-size: 14px;
+	background: none;
+	padding: 0;
+	word-break: break-all;
+}
+
+.fw-mbr-danger,
+.fw-mbr-danger:hover {
+	color: #b32d2e;
+}
