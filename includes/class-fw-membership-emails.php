@@ -130,6 +130,7 @@ class FW_Membership_Emails {
 			'{login_url}'        => __( 'login page', 'fw' ),
 			'{account_url}'      => __( 'member account page', 'fw' ),
 			'{verify_url}'       => __( 'confirmation link (Confirm your email only)', 'fw' ),
+			'{verify_days}'      => __( 'days the confirmation link works (Confirm your email only)', 'fw' ),
 			'{member_admin_url}' => __( 'the member in wp-admin (admin emails)', 'fw' ),
 			'{amount}'           => __( 'amount paid (receipt)', 'fw' ),
 			'{payment_date}'     => __( 'payment date (receipt)', 'fw' ),

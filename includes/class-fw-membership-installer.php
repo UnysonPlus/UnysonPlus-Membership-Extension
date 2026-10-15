@@ -275,6 +275,11 @@ class FW_Membership_Installer {
 
 		delete_option( self::DB_VERSION_OPTION );
 		delete_option( FW_Membership_Modules::OPTION );
+		// Every other Membership setting too, the modules' included (payment and retention
+		// settings, the CRM connection, cards, directory, paywall, remembered service ids).
+		foreach ( (array) $wpdb->get_col( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'fw\\_ext\\_membership\\_%'" ) as $opt ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			delete_option( $opt );
+		}
 		wp_clear_scheduled_hook( FW_Membership_Service::CRON_HOOK );
 		/** The modules' scheduled jobs (they schedule themselves again only while switched on). */
 		foreach ( (array) apply_filters( 'unysonplus_membership_cron_hooks', array( 'fw_mbr_drip_daily', 'fw_mbr_retention_daily' ) ) as $hook ) {

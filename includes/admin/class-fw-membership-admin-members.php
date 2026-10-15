@@ -208,7 +208,10 @@ class FW_Membership_Admin_Members {
 				<input type="search" id="fw-mbr-filter-q" name="q" value="<?php echo esc_attr( $q ); ?>" placeholder="<?php esc_attr_e( 'Name or email', 'fw' ); ?>" />
 				<button type="submit" class="button"><?php esc_html_e( 'Filter', 'fw' ); ?></button>
 			</form>
-			<a class="button button-primary" href="<?php echo esc_url( add_query_arg( 'new', 1, $base ) ); ?>"><?php esc_html_e( 'Add a member', 'fw' ); ?></a>
+			<span class="fw-mbr-listbar__end">
+				<a class="button" href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'export_members', array_filter( array( 'status' => $status, 'plan_id' => $plan_id, 'q' => $q ) ), 'members' ) ); ?>" title="<?php esc_attr_e( 'Download the memberships shown (with the current filters) as a CSV file the importer can read back', 'fw' ); ?>"><?php esc_html_e( 'Export CSV', 'fw' ); ?></a>
+				<a class="button button-primary" href="<?php echo esc_url( add_query_arg( 'new', 1, $base ) ); ?>"><?php esc_html_e( 'Add a member', 'fw' ); ?></a>
+			</span>
 		</div>
 
 		<?php if ( ! $rows ) : ?>
@@ -216,7 +219,7 @@ class FW_Membership_Admin_Members {
 			FW_Membership_App::empty_state(
 				'dashicons-groups',
 				array_sum( $counts ) ? __( 'Nobody matches', 'fw' ) : __( 'No members yet', 'fw' ),
-				array_sum( $counts ) ? __( 'Try another plan, status or search.', 'fw' ) : __( 'Add someone by hand to try your plans out. Sign-up forms and checkout arrive in the next phases.', 'fw' ),
+				array_sum( $counts ) ? __( 'Try another plan, status or search.', 'fw' ) : __( 'Add someone by hand to try your plans out. People also join through a sign-up form, or the checkout when Payments is on.', 'fw' ),
 				array_sum( $counts ) ? array( array( __( 'Show everyone', 'fw' ), $base ) ) : array( array( __( 'Add a member', 'fw' ), add_query_arg( 'new', 1, $base ), true ) )
 			);
 			?>

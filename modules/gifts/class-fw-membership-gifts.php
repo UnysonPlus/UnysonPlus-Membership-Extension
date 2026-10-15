@@ -28,6 +28,7 @@ class FW_Membership_Gifts {
 		add_action( 'unysonplus_membership_checkout_fields', array( __CLASS__, '_fields' ), 5, 3 );
 		add_filter( 'unysonplus_membership_checkout_takeover', array( __CLASS__, '_redeem_page' ), 10, 3 );
 		add_action( 'template_redirect', array( __CLASS__, '_redeem_post' ), 3 );
+		add_action( 'template_redirect', array( __CLASS__, '_code_box' ), 2 );
 		add_filter( 'unysonplus_membership_email_catalogue', array( __CLASS__, '_emails' ) );
 	}
 
@@ -88,6 +89,19 @@ class FW_Membership_Gifts {
 	private static function set( $id, array $row ) {
 		global $wpdb;
 		$wpdb->update( FW_Membership_Installer::table( 'gifts' ), $row, array( 'id' => (int) $id ) );
+	}
+
+	/** @internal A gift code typed into the checkout's "Have a code?" box opens its redeem page. */
+	public static function _code_box() {
+		if ( empty( $_GET['coupon'] ) || isset( $_GET['redeem'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+			return;
+		}
+		$code = strtoupper( sanitize_text_field( wp_unslash( $_GET['coupon'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		$gift = self::get_by_code( $code );
+		if ( $gift ) {
+			wp_safe_redirect( self::redeem_url( $gift['code'] ) );
+			exit;
+		}
 	}
 
 	/** @return string The recipient's redeem link. */

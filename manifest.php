@@ -14,6 +14,31 @@ $manifest['description'] = __(
 /**
  * Changelog ----------------------------------------------------------------
  *
+ * 1.0.22 - The AI Assistant can run a membership site. Eleven more abilities: make the
+ *         member pages (elements placed in the builder, settings pointed at them), switch
+ *         modules, find members and give / extend / change / cancel / end / reactivate a
+ *         membership, payment settings (secret keys are refused: the owner pastes them),
+ *         coupons, a course with its lessons and quizzes, selling one item, member emails,
+ *         profile fields, and the Reports totals. Saving a plan now takes its options
+ *         (plans members may switch to, redirects, role, team seats, devices, store perks)
+ *         and a rule its drip delay; an updated rule keeps its priority.
+ *
+ * 1.0.21 - A way to join from every prompt. Settings -> Member pages has a Join page (the
+ *         page with the Pricing Plans element); "This is for members" prompts now show
+ *         a Join button (See the plans when logged in) next to Log in, going there, or
+ *         to the checkout when one plan unlocks the content. A gift code typed into the
+ *         checkout's Have a code? box opens its redeem page, and the Pricing Plans
+ *         element has a Gift link text option (empty hides the gift link).
+ *
+ * 1.0.20 - Export members to CSV. Members -> Export CSV downloads the memberships the
+ *         list shows (its status, plan and search filters apply), one row per
+ *         membership, starting with exactly the columns the importer reads, so a file
+ *         exported from one site imports into another with subscriptions still linked.
+ *         Further columns are for reading (ids, names, source, trial and cancel dates).
+ *         Cells that would run as spreadsheet formulas are escaped. Also on the command
+ *         line: wp membership export [file] [--plan] [--status]. Filters
+ *         unysonplus_membership_export_columns / _export_row add columns.
+ *
  * 1.0.16 - Courses (phase 11). A Courses module: courses and lessons as their own
  *         post types, grouped into modules and ordered in a lesson list. Who may take
  *         a course is set on the course (plans, any logged-in member, or open), and a
@@ -242,7 +267,7 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.17';
+$manifest['version']    = '1.0.22';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';

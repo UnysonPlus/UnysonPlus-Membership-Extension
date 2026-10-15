@@ -3,8 +3,9 @@
 }
 
 /**
- * AI Assistant abilities for Membership: enough to SET UP a membership site (plans,
- * access rules, settings) and nothing that reads or changes the people in it.
+ * AI Assistant abilities for Membership: setting a membership site up (plans, access rules,
+ * settings). Running it (pages, modules, members, payments, coupons, courses, emails, profile
+ * fields, reports) is in ai-abilities-manage.php.
  *
  *   membership-describe     plans (prices, length, member COUNTS), access rules, modules,
  *                           settings and pages — counts only, never a member
@@ -35,7 +36,7 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 
 		fw_ai_register_ability( 'membership-save-plan', array(
 			'label'       => __( 'Create or update a membership plan', 'fw' ),
-			'description' => 'Creates or updates a plan matched by slug (a plan with the same slug is updated). Fields: name (required), slug, description, prices [ { label, amount, currency (3 letters), billing: free | once | lifetime | day | week | month | year, every (n), trial_days, setup_fee } ] (an empty list = free), length { value, unit: day | week | month | year } or until (YYYY-MM-DD) for a fixed end date, or neither for "until cancelled", includes (slug of a plan whose access this one also gets), priority (higher wins), member_limit (0 = none), status: active | archived. Prices are versioned: a changed price becomes a new row and the old one is archived, so existing members keep what they agreed to. Taking payments arrives with the Payments module. Not undoable with undo_change.',
+			'description' => 'Creates or updates a plan matched by slug (a plan with the same slug is updated). Fields: name (required), slug, description, prices [ { label, amount, currency (3 letters), billing: free | once | lifetime | day | week | month | year, every (n), trial_days, setup_fee } ] (an empty list = free), length { value, unit: day | week | month | year } or until (YYYY-MM-DD) for a fixed end date, or neither for "until cancelled", includes (slug of a plan whose access this one also gets), priority (higher wins), member_limit (0 = none), status: active | archived, options { switch_to: [plan slugs members may move to themselves], login_redirect / logout_redirect (addresses), role (an extra WordPress role while the plan lasts), team_seats (team plan: people the buyer can add; Groups module), max_sessions (devices signed in at once; Account security module), woo_discount (% off in the store), woo_free_shipping (bool; WooCommerce module) } (only the options given change). Prices are versioned: a changed price becomes a new row and the old one is archived, so existing members keep what they agreed to. Paid prices are sold at the checkout once the Payments module is on (bank transfer only takes one-off prices). Not undoable with undo_change.',
 			'input'       => array(
 				'name'         => array( 'type' => 'string', 'minLength' => 1 ),
 				'slug'         => array( 'type' => 'string' ),
@@ -47,6 +48,7 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 				'priority'     => array( 'type' => 'integer' ),
 				'member_limit' => array( 'type' => 'integer' ),
 				'status'       => array( 'type' => 'string' ),
+				'options'      => array( 'type' => 'object' ),
 			),
 			'required'    => array( 'name' ),
 			'permission'  => $cap,
@@ -56,14 +58,16 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 
 		fw_ai_register_ability( 'membership-save-rule', array(
 			'label'       => __( 'Create or update an access rule', 'fw' ),
-			'description' => 'Creates or updates an access rule matched by name. protects: [ { type: site | post_type | post | children | term | archive | url, except?: bool, post_type? (for post_type / archive), post? (id, slug or title, for post / children), taxonomy? + term? (slug, id or name, for term), pattern? (for url, e.g. /members/*) } ]. who: { plans?: [plan slugs] (a plan also counts for the plans it includes), roles?: [role slugs], logged_in?: bool } — nothing given means members of any plan; passing any one is enough. denied: { action: prompt (teaser + log-in / join prompt, the default) | login | redirect | not_found, message?, redirect? (address), teaser_words? (0-500, default 55), hide? (also hide from lists and search) }. Every rule covering a page must be passed. status: active | inactive. Not undoable with undo_change.',
+			'description' => 'Creates or updates an access rule matched by name. protects: [ { type: site | post_type | post | children | term | archive | url, except?: bool, post_type? (for post_type / archive), post? (id, slug or title, for post / children), taxonomy? + term? (slug, id or name, for term), pattern? (for url, e.g. /members/*) } ]. who: { plans?: [plan slugs] (a plan also counts for the plans it includes), roles?: [role slugs], logged_in?: bool } — nothing given means members of any plan; passing any one is enough. denied: { action: prompt (teaser + log-in / join prompt, the default) | login | redirect | not_found, message?, redirect? (address), teaser_words? (0-500, default 55), hide? (also hide from lists and search) }. Every rule covering a page must be passed. drip_days: members see it this many days after they joined (0 = at once); drip_date: YYYY-MM-DD when it opens (Drip module). denied.metered: true lets people without access read a few each period (Metered paywall module). status: active | inactive. Not undoable with undo_change.',
 			'input'       => array(
 				'name'     => array( 'type' => 'string', 'minLength' => 1 ),
 				'protects' => array( 'type' => 'array' ),
 				'who'      => array( 'type' => 'object' ),
 				'denied'   => array( 'type' => 'object' ),
-				'priority' => array( 'type' => 'integer' ),
-				'status'   => array( 'type' => 'string' ),
+				'priority'  => array( 'type' => 'integer' ),
+				'drip_days' => array( 'type' => 'integer' ),
+				'drip_date' => array( 'type' => 'string' ),
+				'status'    => array( 'type' => 'string' ),
 			),
 			'required'    => array( 'name', 'protects' ),
 			'permission'  => $cap,
@@ -73,10 +77,11 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 
 		fw_ai_register_ability( 'membership-settings', array(
 			'label'       => __( 'Change Membership settings', 'fw' ),
-			'description' => 'Updates Membership settings; only the keys given change. account_page / login_page: a page id, slug or title (the pages that hold the Member Account / Member Login elements; 0 = none). after_verify: address people land on after confirming their email. verify_days (1-30). notify_admin (bool) and admin_email: who hears about sign-ups waiting for approval. member_cancel (bool): members may cancel from their account page. button_class / button_class_2: the theme\'s button classes for Membership\'s buttons (e.g. "btn btn-primary"). Undoable with undo_change.',
+			'description' => 'Updates Membership settings; only the keys given change. account_page / login_page / join_page: a page id, slug or title (the pages that hold the Member Account / Member Login / Pricing Plans elements; 0 = none; the Join button on prompts goes to join_page). after_verify: address people land on after confirming their email. verify_days (1-30). notify_admin (bool) and admin_email: who hears about sign-ups waiting for approval. member_cancel (bool): members may cancel from their account page. button_class / button_class_2: the theme\'s button classes for Membership\'s buttons (e.g. "btn btn-primary"). Undoable with undo_change.',
 			'input'       => array(
-				'account_page'   => array(),
-				'login_page'     => array(),
+				'account_page'   => array( 'type' => array( 'integer', 'string' ) ),
+				'login_page'     => array( 'type' => array( 'integer', 'string' ) ),
+				'join_page'      => array( 'type' => array( 'integer', 'string' ) ),
 				'after_verify'   => array( 'type' => 'string' ),
 				'verify_days'    => array( 'type' => 'integer' ),
 				'notify_admin'   => array( 'type' => 'boolean' ),
@@ -127,9 +132,10 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 			'settings'     => array_merge( $s, array(
 				'account_page' => $s['account_page'] ? get_the_title( $s['account_page'] ) . ' (#' . $s['account_page'] . ')' : '',
 				'login_page'   => $s['login_page'] ? get_the_title( $s['login_page'] ) . ' (#' . $s['login_page'] . ')' : '',
+				'join_page'    => $s['join_page'] ? get_the_title( $s['join_page'] ) . ' (#' . $s['join_page'] . ')' : '',
 			) ),
 			'members_with_access' => FW_Membership_Memberships::count_members(),
-			'elements'     => 'Member Login, Member Account and Paywall Prompt elements; a Membership tab on every element; [member_content plans="slug"]…[/member_content]; sign-up = a contact form with the "Register a member" action.',
+			'elements'     => 'Page-builder elements: Member Login, Member Account, Pricing Plans, Membership Checkout, Paywall Prompt, Member Download, Member Directory, Course Outline; a Membership tab on every element (show to plans / members / logged-out visitors); [member_content plans="slug"]…[/member_content]; free sign-up = a contact form with the "Register a member" action; paid plans = Pricing Plans + Membership Checkout (Payments module). membership-setup-pages makes the pages.',
 		);
 	}
 
@@ -157,8 +163,36 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 			'duration_value' => (int) ( $in['length']['value'] ?? 0 ),
 			'duration_unit'  => (string) ( $in['length']['unit'] ?? '' ),
 			'fixed_end_date' => (string) ( $in['until'] ?? '' ),
-			'settings'       => $existing ? $existing['settings'] : array(),
+			'settings'       => $existing ? (array) $existing['settings'] : array(),
 		);
+		if ( ! empty( $in['options'] ) ) {
+			$o        = (array) $in['options'];
+			$settings = $data['settings'];
+			if ( isset( $o['switch_to'] ) ) {
+				$ids = array();
+				foreach ( (array) $o['switch_to'] as $ref ) {
+					$to = FW_Membership_Plans::get_by_slug( sanitize_title( (string) $ref ) );
+					if ( ! $to ) {
+						return new WP_Error( 'fw_mbr_ai_plan', sprintf( 'No plan "%s" to switch to.', is_scalar( $ref ) ? $ref : '' ) );
+					}
+					$ids[] = (int) $to['id'];
+				}
+				$settings['switch_to'] = $ids;
+			}
+			foreach ( array( 'login_redirect', 'logout_redirect' ) as $k ) {
+				if ( isset( $o[ $k ] ) ) {
+					$settings[ $k ] = esc_url_raw( (string) $o[ $k ] );
+				}
+			}
+			if ( isset( $o['role'] ) ) {
+				$role             = sanitize_key( (string) $o['role'] );
+				$settings['role'] = isset( FW_Membership_Access::safe_roles()[ $role ] ) ? $role : '';
+			}
+			// Module options go through the same filter as the plan screen; the modules read
+			// their whole set from it, so start from what the plan has and lay the changes over.
+			$posted           = array_merge( $settings, array_intersect_key( $o, array_flip( array( 'team_seats', 'max_sessions', 'woo_discount', 'woo_discount_cats', 'woo_free_shipping' ) ) ) );
+			$data['settings'] = (array) apply_filters( 'unysonplus_membership_plan_settings', $settings, $posted, $existing );
+		}
 		$prices = array();
 		$old    = $existing ? $existing['prices'] : array();
 		foreach ( (array) ( $in['prices'] ?? $old ) as $i => $p ) {
@@ -245,7 +279,9 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 		$id = FW_Membership_Rules::save( array(
 			'name'     => (string) $in['name'],
 			'status'   => (string) ( $in['status'] ?? 'active' ),
-			'priority' => (int) ( $in['priority'] ?? 0 ),
+			'priority'  => (int) ( $in['priority'] ?? ( $existing['priority'] ?? 0 ) ),
+			'drip_days' => (int) ( $in['drip_days'] ?? ( $existing['drip_days'] ?? 0 ) ),
+			'drip_date' => (string) ( $in['drip_date'] ?? ( $existing['drip_date'] ?? '' ) ),
 			'who'      => array( 'plans' => $plans, 'roles' => (array) ( $in['who']['roles'] ?? array() ), 'logged_in' => ! empty( $in['who']['logged_in'] ) ),
 			'denied'   => array_merge( array( 'action' => 'prompt', 'teaser_words' => 55 ), (array) ( $in['denied'] ?? array() ) ),
 		), $targets, $existing ? $existing['id'] : 0 );
@@ -268,7 +304,7 @@ if ( ! function_exists( 'fw_ext_membership_ai_register' ) ) :
 	function fw_ext_membership_ai_settings( $in ) {
 		$in = (array) $in;
 		$s  = FW_Membership_Settings::get();
-		foreach ( array( 'account_page', 'login_page' ) as $k ) {
+		foreach ( array( 'account_page', 'login_page', 'join_page' ) as $k ) {
 			if ( array_key_exists( $k, $in ) ) {
 				$page   = FW_Membership_AI_Labels::find_post( $in[ $k ], 'page' );
 				$s[ $k ] = $page ? $page->ID : 0;

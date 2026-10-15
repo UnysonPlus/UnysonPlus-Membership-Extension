@@ -31,6 +31,7 @@ class FW_Membership_Courses {
 			add_action( 'save_post_' . self::LESSON, array( __CLASS__, '_save_lesson' ), 20, 2 );
 			add_filter( 'manage_' . self::LESSON . '_posts_columns', array( __CLASS__, '_columns' ) );
 			add_action( 'manage_' . self::LESSON . '_posts_custom_column', array( __CLASS__, '_column' ), 10, 2 );
+			add_action( 'admin_head-edit.php', array( __CLASS__, '_column_css' ) );
 		}
 		add_action( 'before_delete_post', array( __CLASS__, '_deleted' ) );
 	}
@@ -130,11 +131,11 @@ class FW_Membership_Courses {
 			return;
 		}
 		$plans = $a['plans'];
-		if ( class_exists( 'FW_Membership_Single_Purchase' ) ) {
-			$item = FW_Membership_Single_Purchase::plan_for( 'post', $course_id );
-			if ( $item ) {
-				$plans[] = (int) $item['id']; // buying the course opens its lessons
-			}
+		// Buying the course opens its lessons. The item plan stays in the rule after the
+		// course comes off sale, so the people who bought it keep their lessons.
+		$item = FW_Membership_Plans::get_by_slug( 'item-post-' . (int) $course_id );
+		if ( $item ) {
+			$plans[] = (int) $item['id'];
 		}
 		$data = array(
 			'name'   => sprintf( __( 'Course: %s', 'fw' ), $title ),
@@ -256,6 +257,14 @@ class FW_Membership_Courses {
 	/** @internal */
 	public static function _columns( $cols ) {
 		return array_merge( array_slice( $cols, 0, 2 ), array( 'fw_course' => __( 'Course', 'fw' ), 'fw_module' => __( 'Module', 'fw' ) ), array_slice( $cols, 2 ) );
+	}
+
+	/** @internal Give the Course and Module columns a width, or the list squeezes them to one letter a line. */
+	public static function _column_css() {
+		if ( self::LESSON !== get_current_screen()->post_type ) {
+			return;
+		}
+		echo '<style>.post-type-fw_lesson .wp-list-table .column-fw_course{width:18%}.post-type-fw_lesson .wp-list-table .column-fw_module{width:12%}</style>';
 	}
 
 	/** @internal */

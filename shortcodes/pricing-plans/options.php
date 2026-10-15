@@ -50,6 +50,12 @@ $options = array(
 						'label' => __( 'Button text', 'fw' ),
 						'value' => __( 'Join', 'fw' ),
 					),
+					'gift_text'    => array(
+						'type'  => 'text',
+						'label' => __( 'Gift link text', 'fw' ),
+						'desc'  => __( 'The link under each paid plan to buy it for someone else (Gifts module). Leave empty to hide it.', 'fw' ),
+						'value' => __( 'Give as a gift', 'fw' ),
+					),
 					'current_text' => array(
 						'type'  => 'text',
 						'label' => __( 'Text for the plan a member already holds', 'fw' ),

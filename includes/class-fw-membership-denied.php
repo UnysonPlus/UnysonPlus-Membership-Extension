@@ -88,7 +88,7 @@ class FW_Membership_Denied {
 	 * The prompt box.
 	 *
 	 * @param array|null $rule The rule that was failed (null: a generic prompt).
-	 * @param array      $args title, message, show_plans, show_login, button_text, button_link (Paywall prompt element)
+	 * @param array      $args title, message, show_plans, show_login, button_text, button_link (Paywall prompt element), no_join (no automatic Join button)
 	 *
 	 * @return string HTML
 	 */
@@ -103,11 +103,13 @@ class FW_Membership_Denied {
 		if ( ! $ids && ( ! $rule || ( ! $rule['who']['roles'] && ! $rule['who']['logged_in'] ) ) ) {
 			$ids = array_keys( FW_Membership_Plans::all( 'active' ) );
 		}
-		$plans = array();
+		$plans    = array();
+		$open_ids = array();
 		foreach ( $ids as $pid ) {
 			$p = FW_Membership_Plans::get( $pid );
 			if ( $p && 'active' === $p['status'] ) {
-				$plans[] = $p['name'];
+				$plans[]    = $p['name'];
+				$open_ids[] = (int) $p['id'];
 			}
 		}
 		$needs_login_only = $rule && $rule['who']['logged_in'] && ! $in;
@@ -133,6 +135,11 @@ class FW_Membership_Denied {
 		$here       = ( is_ssl() ? 'https://' : 'http://' ) . ( $_SERVER['HTTP_HOST'] ?? '' ) . ( $_SERVER['REQUEST_URI'] ?? '/' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$btn_text   = (string) ( $args['button_text'] ?? '' );
 		$btn_link   = (string) ( $args['button_link'] ?? '' );
+		if ( '' === $btn_text && '' === $btn_link && ! $needs_login_only && $open_ids && empty( $args['no_join'] ) ) {
+			// No button of its own: offer a way to join (Settings → Join page, or the checkout).
+			$btn_link = FW_Membership_Settings::join_url( $open_ids );
+			$btn_text = '' === $btn_link ? '' : ( $in ? __( 'See the plans', 'fw' ) : __( 'Join', 'fw' ) );
+		}
 
 		ob_start();
 		?>

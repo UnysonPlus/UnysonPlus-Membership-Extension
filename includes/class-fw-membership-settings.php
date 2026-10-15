@@ -19,6 +19,7 @@ class FW_Membership_Settings {
 		return array(
 			'account_page'    => 0,   // page holding the Member Account element
 			'login_page'      => 0,   // page holding the Member Login element (0: wp-login.php)
+			'join_page'       => 0,   // page holding the Pricing Plans element (where prompts' Join button goes)
 			'after_verify'    => '',  // where people land after confirming their email ('' = account page)
 			'verify_days'     => 7,   // how long a confirmation link works
 			'notify_admin'    => 1,   // email the site admin about sign-ups awaiting approval
@@ -49,6 +50,7 @@ class FW_Membership_Settings {
 		$out = array(
 			'account_page' => max( 0, (int) ( $values['account_page'] ?? 0 ) ),
 			'login_page'   => max( 0, (int) ( $values['login_page'] ?? 0 ) ),
+			'join_page'    => max( 0, (int) ( $values['join_page'] ?? 0 ) ),
 			'after_verify' => esc_url_raw( (string) ( $values['after_verify'] ?? '' ) ),
 			'verify_days'  => max( 1, min( 30, (int) ( $values['verify_days'] ?? $d['verify_days'] ) ) ),
 			'notify_admin' => empty( $values['notify_admin'] ) ? 0 : 1,
@@ -59,6 +61,29 @@ class FW_Membership_Settings {
 		);
 		update_option( self::OPTION, $out, false );
 		self::$cache = null;
+	}
+
+	/**
+	 * Where a prompt's Join button goes: the Join page when one is set, otherwise the
+	 * checkout for the one plan that unlocks the content (when Payments is on and it has a
+	 * price), otherwise nowhere ('').
+	 *
+	 * @param int[] $plan_ids The plans that would unlock it.
+	 *
+	 * @return string
+	 */
+	public static function join_url( array $plan_ids = array() ) {
+		$page = (int) self::get( 'join_page' );
+		if ( $page && 'publish' === get_post_status( $page ) ) {
+			return get_permalink( $page );
+		}
+		if ( 1 === count( $plan_ids ) && class_exists( 'FW_Membership_Gateways' ) && method_exists( 'FW_Membership_Gateways', 'checkout_url' ) ) {
+			$plan = FW_Membership_Plans::get( (int) reset( $plan_ids ) );
+			if ( $plan && ! empty( $plan['prices'] ) ) {
+				return FW_Membership_Gateways::checkout_url( array( 'plan' => $plan['slug'] ) );
+			}
+		}
+		return '';
 	}
 
 	/** @return string The member account page, or the WordPress profile. */

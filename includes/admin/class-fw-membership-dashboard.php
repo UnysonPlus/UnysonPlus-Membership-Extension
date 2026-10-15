@@ -173,7 +173,7 @@ class FW_Membership_Dashboard {
 		?>
 		<div class="fw-mbr-welcome">
 			<h2><?php esc_html_e( 'Set up your membership site', 'fw' ); ?></h2>
-			<p class="fw-mbr-muted"><?php esc_html_e( 'Three steps get you started. Access rules, sign-up forms and payments arrive in the next updates.', 'fw' ); ?></p>
+			<p class="fw-mbr-muted"><?php esc_html_e( 'Three steps get you started. Then protect content with Access rules, and switch on Payments in Modules to sell plans.', 'fw' ); ?></p>
 			<ol class="fw-mbr-welcome__steps">
 				<?php foreach ( $steps as $s ) : ?>
 					<li class="fw-mbr-step<?php echo $s[5] ? ' is-done' : ''; ?>">

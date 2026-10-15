@@ -121,11 +121,25 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 	<div class="fw-mbr-checkout__summary">
 		<div>
 			<strong><?php echo esc_html( $plan['name'] ); ?></strong>
-			<span><?php echo esc_html( FW_Membership_Plans::duration_label( $plan ) ); ?></span>
+			<span><?php echo esc_html( $is_gift ? __( 'A gift: one payment, nothing renews', 'fw' ) : FW_Membership_Plans::duration_label( $plan ) ); ?></span>
 		</div>
 		<div style="text-align:right">
-			<strong><?php echo esc_html( FW_Membership_Plans::price_label( $price ) ); ?></strong>
-			<?php if ( (int) $price['trial_days'] > 0 ) : ?>
+			<?php
+			$label = FW_Membership_Plans::price_label( $price );
+			if ( $is_gift && in_array( $price['billing'], array( 'day', 'week', 'month', 'year' ), true ) ) {
+				// A gift is paid once and covers one period of a repeating price.
+				$n     = max( 1, (int) $price['interval_count'] );
+				$units = array(
+					'day'   => _n( '%d day', '%d days', $n, 'fw' ),
+					'week'  => _n( '%d week', '%d weeks', $n, 'fw' ),
+					'month' => _n( '%d month', '%d months', $n, 'fw' ),
+					'year'  => _n( '%d year', '%d years', $n, 'fw' ),
+				);
+				$label = sprintf( __( '%1$s for %2$s', 'fw' ), trim( $price['currency'] . ' ' . number_format_i18n( $price['amount'], 2 ) ), sprintf( $units[ $price['billing'] ], $n ) );
+			}
+			?>
+			<strong><?php echo esc_html( $label ); ?></strong>
+			<?php if ( ! $is_gift && (int) $price['trial_days'] > 0 ) : ?>
 				<span><?php echo esc_html( sprintf( __( 'Free for the first %d days', 'fw' ), (int) $price['trial_days'] ) ); ?></span>
 			<?php endif; ?>
 		</div>
@@ -159,7 +173,7 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 	/** Fields that change the price (the Tax module adds country / region / VAT number). */
 	do_action( 'unysonplus_membership_checkout_price_fields', $plan, $price, $quote );
 	$price_fields = (string) ob_get_clean();
-	$has_coupons  = class_exists( 'FW_Membership_Coupons' ) && ( ! $free || $quote['coupon'] );
+	$has_coupons  = ( class_exists( 'FW_Membership_Coupons' ) && ( ! $free || $quote['coupon'] ) ) || class_exists( 'FW_Membership_Gifts' ); // a gift code works here too
 	?>
 	<?php if ( '' !== trim( $price_fields ) || $has_coupons ) : ?>
 		<form method="get" class="fw-mbr-form fw-mbr-checkout__price" action="<?php echo esc_url( $here ); ?>">

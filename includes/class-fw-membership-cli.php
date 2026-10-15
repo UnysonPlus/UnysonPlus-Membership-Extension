@@ -8,6 +8,7 @@
  * ## EXAMPLES
  *
  *     wp membership list --plan=gold --status=access
+ *     wp membership export members.csv
  *     wp membership grant jane@example.com gold --ends=2027-01-31
  *     wp membership extend 42 --until="+1 month"
  *     wp membership expire 42 --note="Refunded by phone"
@@ -68,6 +69,43 @@ class FW_Membership_CLI {
 			return;
 		}
 		WP_CLI\Utils\format_items( $assoc['format'] ?? 'table', $rows, array( 'id', 'user', 'plan', 'status', 'source', 'started', 'ends', 'gateway' ) );
+	}
+
+	/**
+	 * Export memberships as CSV, in the columns the importer reads back.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [<file>]
+	 * : Write to this file instead of the screen.
+	 *
+	 * [--plan=<plan>]
+	 * : Plan id or slug.
+	 *
+	 * [--status=<status>]
+	 * : A status, or "access".
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp membership export members.csv --status=access
+	 */
+	public function export( $args, $assoc ) {
+		$q = array();
+		if ( ! empty( $assoc['plan'] ) ) {
+			$q['plan_id'] = $this->plan( $assoc['plan'] )['id'];
+		}
+		if ( ! empty( $assoc['status'] ) ) {
+			$q['status'] = 'access' === $assoc['status'] ? 'access' : array( $assoc['status'] );
+		}
+		$fh = empty( $args[0] ) ? fopen( 'php://stdout', 'w' ) : fopen( $args[0], 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( ! $fh ) {
+			WP_CLI::error( 'Could not write the file.' );
+		}
+		$n = FW_Membership_Export::write( $fh, $q );
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( ! empty( $args[0] ) ) {
+			WP_CLI::success( sprintf( '%d memberships written to %s.', $n, $args[0] ) );
+		}
 	}
 
 	/**

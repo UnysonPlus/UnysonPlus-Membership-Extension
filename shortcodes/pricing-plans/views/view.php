@@ -134,7 +134,7 @@ $amount_html = function ( $pr ) {
 				</div>
 				<?php
 				$gift_price = '' === $intervals[0] ? ( $plan['prices'][0] ?? null ) : $price_for( $plan, $intervals[0] );
-				if ( class_exists( 'FW_Membership_Gifts' ) && $payments_on && $gift_price && (float) $gift_price['amount'] > 0 ) :
+				if ( class_exists( 'FW_Membership_Gifts' ) && $payments_on && $gift_price && (float) $gift_price['amount'] > 0 && '' !== trim( (string) ( $atts['gift_text'] ?? __( 'Give as a gift', 'fw' ) ) ) ) :
 					?>
 					<a class="fw-mbr-plan__gift" href="<?php echo esc_url( FW_Membership_Gateways::checkout_url( array( 'plan' => $plan['slug'], 'price' => $gift_price['id'], 'gift' => 1 ) ) ); ?>"><?php echo esc_html( (string) ( $atts['gift_text'] ?? __( 'Give as a gift', 'fw' ) ) ); ?></a>
 				<?php endif; ?>

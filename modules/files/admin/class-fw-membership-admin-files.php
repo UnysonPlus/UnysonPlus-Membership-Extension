@@ -110,7 +110,7 @@ class FW_Membership_Admin_Files {
 					<table class="widefat striped"><tbody>
 						<?php foreach ( $log as $l ) : ?>
 							<?php $u = get_userdata( (int) $l['user_id'] ); ?>
-							<tr><td><?php echo esc_html( FW_Membership_App::date( $l['created_at'] ) . ' ' . substr( $l['created_at'], 11, 5 ) ); ?></td><td><?php echo $u ? esc_html( $u->display_name ) : esc_html__( '(deleted)', 'fw' ); ?></td></tr>
+							<tr><td><?php echo FW_Membership_App::date( $l['created_at'] ) . ' ' . esc_html( substr( $l['created_at'], 11, 5 ) ); ?></td><td><?php echo $u ? esc_html( $u->display_name ) : esc_html__( '(deleted)', 'fw' ); ?></td></tr>
 						<?php endforeach; ?>
 					</tbody></table>
 				<?php endif; ?>

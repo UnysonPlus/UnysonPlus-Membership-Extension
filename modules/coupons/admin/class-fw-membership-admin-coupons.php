@@ -46,15 +46,19 @@ class FW_Membership_Admin_Coupons {
 				return array( 'tab' => 'coupons' );
 
 			case 'export_coupons':
-				$rows = FW_Membership_Coupons::query( array( 'batch' => sanitize_key( (string) ( $r['batch'] ?? '' ) ), 'per_page' => 500 ) );
+				$batch = sanitize_key( (string) ( $r['batch'] ?? '' ) );
 				nocache_headers();
 				header( 'Content-Type: text/csv; charset=utf-8' );
 				header( 'Content-Disposition: attachment; filename="coupons-' . sanitize_file_name( (string) ( $r['batch'] ?? 'all' ) ) . '.csv"' );
 				$out = fopen( 'php://output', 'w' );
 				fputcsv( $out, array( 'code', 'discount', 'uses', 'max_uses', 'expires', 'status' ) );
-				foreach ( $rows as $c ) {
-					fputcsv( $out, array( $c['code'], FW_Membership_Coupons::label( $c ), $c['uses'], $c['max_uses'], (string) $c['expires_at'], $c['status'] ) );
-				}
+				$page = 1;
+				do { // every code, in pages of 500
+					$rows = FW_Membership_Coupons::query( array( 'batch' => $batch, 'per_page' => 500, 'page' => $page++ ) );
+					foreach ( $rows as $c ) {
+						fputcsv( $out, array( $c['code'], FW_Membership_Coupons::label( $c ), $c['uses'], $c['max_uses'], (string) $c['expires_at'], $c['status'] ) );
+					}
+				} while ( 500 === count( $rows ) );
 				fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 				exit;
 		}
@@ -164,7 +168,7 @@ class FW_Membership_Admin_Coupons {
 							?>
 						</td>
 						<td><?php echo esc_html( $c['max_uses'] ? sprintf( '%d / %d', $c['uses'], $c['max_uses'] ) : (string) $c['uses'] ); ?></td>
-						<td><?php echo $c['expires_at'] ? esc_html( FW_Membership_App::date( $c['expires_at'] ) ) : '<span aria-hidden="true">—</span>'; ?></td>
+						<td><?php echo $c['expires_at'] ? FW_Membership_App::date( $c['expires_at'] ) : '<span aria-hidden="true">—</span>'; ?></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>

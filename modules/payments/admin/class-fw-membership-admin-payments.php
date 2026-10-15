@@ -40,7 +40,8 @@ class FW_Membership_Admin_Payments {
 						FW_Membership_Admin_Page::flash( 'error', $res->get_error_message() );
 					} else {
 						FW_Membership_Payments_Flow::refunded( $p['id'], 'payment' === $p['type'] );
-						FW_Membership_Admin_Page::flash( 'success', 'payment' === $p['type'] ? __( 'Refunded. The membership has ended.', 'fw' ) : __( 'Refunded. The membership continues; cancel it on the member\'s page if it should stop.', 'fw' ) );
+						$lead = ! empty( $r['only_mark'] ) || ! $g ? __( 'Marked refunded.', 'fw' ) : __( 'Refunded.', 'fw' );
+						FW_Membership_Admin_Page::flash( 'success', $lead . ' ' . ( 'payment' === $p['type'] ? __( 'The membership has ended.', 'fw' ) : __( 'The membership continues; cancel it on the member\'s page if it should stop.', 'fw' ) ) );
 					}
 				}
 				return array( 'tab' => 'payments' );
@@ -134,7 +135,12 @@ class FW_Membership_Admin_Payments {
 									<?php if ( 'pending' === $p['status'] && 'offline' === $p['gateway'] ) : ?>
 										<span><a href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'mark_paid', array( 'id' => $p['id'] ), 'payments' ) ); ?>"><?php esc_html_e( 'Mark paid', 'fw' ); ?></a></span>
 									<?php elseif ( 'paid' === $p['status'] ) : ?>
-										<span class="trash"><a href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'refund_payment', array( 'id' => $p['id'] ), 'payments' ) ); ?>" onclick="return confirm('<?php echo esc_js( 'stripe' === $p['gateway'] ? __( 'Refund this payment through Stripe? A refunded first payment ends the membership.', 'fw' ) : __( 'Mark this payment refunded? Return the money yourself. A refunded first payment ends the membership.', 'fw' ) ); ?>');"><?php esc_html_e( 'Refund', 'fw' ); ?></a></span>
+										<?php $pg = FW_Membership_Gateways::get( $p['gateway'] ); ?>
+										<?php if ( $pg && $pg->refunds_online() ) : ?>
+											<span class="trash"><a href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'refund_payment', array( 'id' => $p['id'] ), 'payments' ) ); ?>" onclick="return confirm('<?php echo esc_js( sprintf( __( 'Refund this payment through %s? The money goes back to the buyer. A refunded first payment ends the membership.', 'fw' ), $pg->title() ) ); ?>');"><?php esc_html_e( 'Refund', 'fw' ); ?></a></span>
+										<?php else : ?>
+											<span class="trash"><a href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'refund_payment', array( 'id' => $p['id'], 'only_mark' => 1 ), 'payments' ) ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Mark this payment refunded? Return the money yourself first; nothing is sent from here. A refunded first payment ends the membership.', 'fw' ) ); ?>');"><?php esc_html_e( 'Mark refunded', 'fw' ); ?></a></span>
+										<?php endif; ?>
 									<?php endif; ?>
 								</div>
 							</td>

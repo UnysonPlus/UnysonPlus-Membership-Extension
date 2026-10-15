@@ -197,7 +197,7 @@ class FW_Membership_App {
 											<span class="dashicons <?php echo esc_attr( $item['icon'] ); ?>" aria-hidden="true"></span>
 											<span class="fw-mbr-side__text"><?php echo esc_html( $item['label'] ); ?></span>
 											<?php if ( ! empty( $item['soon'] ) ) : ?>
-												<span class="fw-mbr-side__soon"><?php esc_html_e( 'Soon', 'fw' ); ?></span>
+												<span class="fw-mbr-side__soon"><?php esc_html_e( 'Off', 'fw' ); ?></span>
 											<?php endif; ?>
 										</a>
 									</li>
@@ -447,11 +447,14 @@ class FW_Membership_App {
 		);
 		$item = self::item( $view );
 
+		$module = array( 'payments' => 'payments', 'coupons' => 'coupons', 'reports' => 'analytics' );
+		$reg    = FW_Membership_Modules::registry();
+		$name   = isset( $module[ $view ], $reg[ $module[ $view ] ] ) ? $reg[ $module[ $view ] ][0] : ( $item ? $item['label'] : '' );
 		self::empty_state(
-			$item ? $item['icon'] : 'dashicons-clock',
-			sprintf( __( '%s is on the way', 'fw' ), $item ? $item['label'] : '' ),
-			$about[ $view ] ?? __( 'This part of Membership is planned for a later update.', 'fw' ),
-			array( array( __( 'See the Membership roadmap', 'fw' ), 'https://docs.unysonplus.com/membership/roadmap' ) )
+			$item ? $item['icon'] : 'dashicons-admin-plugins',
+			sprintf( __( '%s is switched off', 'fw' ), $item ? $item['label'] : '' ),
+			( $about[ $view ] ?? '' ) . ' ' . sprintf( __( 'Switch on the %s module to use it.', 'fw' ), $name ),
+			array( array( __( 'Open Modules', 'fw' ), FW_Membership_Admin_Page::get_page_url( 'modules' ), true ) )
 		);
 	}
 }

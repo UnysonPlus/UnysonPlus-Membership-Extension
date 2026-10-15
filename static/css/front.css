@@ -366,6 +366,15 @@
 	border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
 }
 
+/* Team rows: name, a status pill sized to its text, the action. */
+.fw-mbr-team .fw-mbr-account__payments li {
+	grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.fw-mbr-account__payments .fw-mbr-account__status {
+	justify-self: start;
+}
+
 /* --- Pricing plans --------------------------------------------------------- */
 
 .fw-mbr-pricing__toggle {

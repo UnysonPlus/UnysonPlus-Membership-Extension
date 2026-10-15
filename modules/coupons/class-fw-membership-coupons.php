@@ -347,7 +347,8 @@ class FW_Membership_Coupons {
 		$code = (string) ( $payment['coupon'] ?? '' );
 		$c    = '' !== $code ? self::get_by_code( $code ) : null;
 		$g    = FW_Membership_Gateways::get( 'stripe' );
-		if ( ! $c || ! $g ) {
+		// A gift is sent to Stripe at its final, already-discounted price: no second discount.
+		if ( ! $c || ! $g || ! empty( $payment['meta']['gift'] ) ) {
 			return $params;
 		}
 		$mode = 'live' === $g->setting( 'mode' ) ? 'live' : 'test';

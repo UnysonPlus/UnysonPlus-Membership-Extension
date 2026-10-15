@@ -26,6 +26,12 @@ class FW_Membership_Progress {
 		FW_Membership_Installer::module_tables( 'courses', self::VERSION, array( __CLASS__, 'schema' ), array( 'course_enrollments', 'course_progress' ) );
 		add_action( 'template_redirect', array( __CLASS__, '_enroll_on_view' ), 20 );
 		add_action( 'template_redirect', array( __CLASS__, '_post' ), 3 );
+		// A lesson has its own previous / next in course order; drop the theme's date-order one.
+		add_action( 'template_redirect', function () {
+			if ( is_singular( FW_Membership_Courses::LESSON ) ) {
+				remove_action( 'unysonplus_after_entry', 'unysonplus_post_nav' );
+			}
+		}, 30 );
 		add_filter( 'the_content', array( __CLASS__, '_lesson_page' ), 9990 );
 		add_filter( 'the_content', array( __CLASS__, '_course_page' ), 9990 );
 		add_action( 'unysonplus_membership_account_sections', array( __CLASS__, '_account' ), 4 );
@@ -311,6 +317,12 @@ class FW_Membership_Progress {
 			$url = FW_Membership_Gateways::checkout_url( array( 'plan' => $item['slug'], 'price' => $item['prices'][0]['id'] ) );
 			if ( '' !== $url ) {
 				$buttons .= '<a class="' . esc_attr( FW_Membership_Settings::button_class() ) . '" href="' . esc_url( $url ) . '">' . esc_html( sprintf( __( 'Buy this course for %s', 'fw' ), FW_Membership_Plans::money( $item['prices'][0]['amount'], $item['prices'][0]['currency'] ) ) ) . '</a> ';
+			}
+		}
+		if ( 'plans' === $a['who'] && $a['plans'] ) {
+			$join = FW_Membership_Settings::join_url( $a['plans'] );
+			if ( '' !== $join ) {
+				$buttons .= '<a class="' . esc_attr( FW_Membership_Settings::button_class( '' !== $buttons ) ) . '" href="' . esc_url( $join ) . '">' . esc_html( is_user_logged_in() ? __( 'See the plans', 'fw' ) : __( 'Join', 'fw' ) ) . '</a> ';
 			}
 		}
 		if ( ! is_user_logged_in() ) {

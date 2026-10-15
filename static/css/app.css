@@ -423,7 +423,7 @@ body.fw-mbr-focus #wpfooter {
 
 .wrap.fw-mbr-body {
 	width: 100%;
-	max-width: 1480px;
+	max-width: none;
 	margin: 0;
 	padding: 24px;
 	box-sizing: border-box;
@@ -492,6 +492,12 @@ body.fw-mbr-focus #wpfooter {
 
 .fw-mbr-listbar > p {
 	margin: 0;
+}
+
+.fw-mbr-listbar__end {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
 }
 
 .fw-mbr-inline {

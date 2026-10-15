@@ -46,6 +46,12 @@ $label                    = '' !== trim( (string) ( $atts['button_text'] ?? '' )
 			<?php if ( ! $uid ) : ?>
 				<a href="<?php echo esc_url( FW_Membership_Settings::login_url( get_permalink() ) ); ?>"><?php esc_html_e( 'Log in', 'fw' ); ?></a>
 			<?php endif; ?>
+			<?php
+			$join = '' === $buy && ! empty( $f['who']['plans'] ) ? FW_Membership_Settings::join_url( array_map( 'intval', (array) $f['who']['plans'] ) ) : '';
+			if ( '' !== $join ) :
+				?>
+				<a href="<?php echo esc_url( $join ); ?>"><?php echo esc_html( $uid ? __( 'See the plans', 'fw' ) : __( 'Join', 'fw' ) ); ?></a>
+			<?php endif; ?>
 		</p>
 	<?php endif; ?>
 	<?php if ( 'no' !== ( $atts['show_details'] ?? 'yes' ) ) : ?>

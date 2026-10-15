@@ -58,9 +58,9 @@ add_action( 'unysonplus_membership_render_view', function ( $tab ) {
 						<?php if ( 'redeemed' !== $g['status'] && 'cancelled' !== $g['status'] ) : ?><span class="trash"><a href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'gift_cancel', array( 'id' => $g['id'] ), 'gifts' ) ); ?>"><?php esc_html_e( 'Cancel', 'fw' ); ?></a></span><?php endif; ?>
 					</div>
 				</td>
-				<td><?php echo $buyer ? esc_html( $buyer->display_name ) : '—'; ?><br /><span class="fw-mbr-muted"><?php echo esc_html( FW_Membership_App::date( $g['created_at'] ) ); ?></span></td>
+				<td><?php echo $buyer ? esc_html( $buyer->display_name ) : '—'; ?><br /><span class="fw-mbr-muted"><?php echo FW_Membership_App::date( $g['created_at'] ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by date() ?></span></td>
 				<td><?php echo esc_html( trim( $g['recipient_name'] . ' ' ) ); ?><br /><span class="fw-mbr-muted"><?php echo esc_html( $g['recipient_email'] ); ?></span></td>
-				<td><span class="fw-mbr-mstatus fw-mbr-mstatus--<?php echo esc_attr( $pill[ $g['status'] ] ?? 'expired' ); ?>"><?php echo esc_html( $labels[ $g['status'] ] ?? $g['status'] ); ?></span><?php echo $g['redeemed_at'] ? '<br /><span class="fw-mbr-muted">' . esc_html( FW_Membership_App::date( $g['redeemed_at'] ) ) . '</span>' : ''; ?></td>
+				<td><span class="fw-mbr-mstatus fw-mbr-mstatus--<?php echo esc_attr( $pill[ $g['status'] ] ?? 'expired' ); ?>"><?php echo esc_html( $labels[ $g['status'] ] ?? $g['status'] ); ?></span><?php echo $g['redeemed_at'] ? '<br /><span class="fw-mbr-muted">' . FW_Membership_App::date( $g['redeemed_at'] ) . '</span>' : ''; ?></td>
 			</tr>
 		<?php endforeach; ?>
 		</tbody>

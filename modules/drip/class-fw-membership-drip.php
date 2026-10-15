@@ -97,6 +97,7 @@ class FW_Membership_Drip {
 		$args['message']    = sprintf( __( 'It is part of your membership and becomes available on %s. We will email you when it opens.', 'fw' ), date_i18n( get_option( 'date_format' ), $at ) );
 		$args['show_plans'] = false;
 		$args['show_login'] = false;
+		$args['no_join']    = true; // it is already theirs: nothing to join
 		return $args;
 	}
 

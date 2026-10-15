@@ -146,6 +146,11 @@ abstract class FW_Membership_Gateway {
 	 *
 	 * @return true|WP_Error
 	 */
+	/** @return bool Whether refund() returns the money through the payment service. */
+	public function refunds_online() {
+		return ( new ReflectionMethod( $this, 'refund' ) )->getDeclaringClass()->getName() !== __CLASS__;
+	}
+
 	public function refund( array $payment ) {
 		return new WP_Error( 'fw_mbr_no_refund', __( 'Refunds for this payment method are made outside the site. Mark it refunded here once done.', 'fw' ) );
 	}

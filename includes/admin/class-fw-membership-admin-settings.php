@@ -281,6 +281,11 @@ class FW_Membership_Admin_Settings {
 							<?php $page_select( 'login_page', $s['login_page'], __( 'None (the WordPress login screen)', 'fw' ) ); ?>
 							<span class="description"><?php esc_html_e( 'The page with the Member Login element, used by links in emails and prompts.', 'fw' ); ?></span>
 						</p>
+						<p class="fw-mbr-field">
+							<label for="fw-mbr-join_page"><?php esc_html_e( 'Join page', 'fw' ); ?></label>
+							<?php $page_select( 'join_page', $s['join_page'], __( 'None (the checkout, when only one plan unlocks it)', 'fw' ) ); ?>
+							<span class="description"><?php esc_html_e( 'The page with your plans (the Pricing Plans element). The Join button on "This is for members" prompts goes here.', 'fw' ); ?></span>
+						</p>
 					</div>
 				</section>
 				<section class="fw-mbr-panel" aria-labelledby="fw-mbr-h-signup">

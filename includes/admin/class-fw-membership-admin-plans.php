@@ -248,7 +248,7 @@ class FW_Membership_Admin_Plans {
 
 					<section class="fw-mbr-panel" aria-labelledby="fw-mbr-h-prices">
 						<header class="fw-mbr-panel__head"><h2 id="fw-mbr-h-prices"><?php esc_html_e( 'Prices', 'fw' ); ?></h2></header>
-						<p class="fw-mbr-muted"><?php esc_html_e( 'A plan can have several prices, such as monthly and yearly. Leave it without prices for a free plan. Taking payments arrives with the Payments module; until then members are added by hand.', 'fw' ); ?></p>
+						<p class="fw-mbr-muted"><?php esc_html_e( 'A plan can have several prices, such as monthly and yearly. Leave it without prices for a free plan. People pay at your checkout when the Payments module is on; without it, add members by hand or through a sign-up form.', 'fw' ); ?></p>
 						<table class="widefat fw-mbr-prices" id="fw-mbr-prices">
 							<thead>
 								<tr>

@@ -99,7 +99,7 @@ class FW_Membership_Importers {
 		foreach ( $rows as $n => $r ) {
 			$line  = $n + 2;
 			$email = sanitize_email( (string) ( $r['email'] ?? '' ) );
-			$plan  = self::find_plan( $r['plan'] ?? ( $opts['default_plan'] ?? '' ) );
+			$plan  = self::find_plan( '' !== trim( (string) ( $r['plan'] ?? '' ) ) ? $r['plan'] : ( $opts['default_plan'] ?? '' ) ); // an empty plan cell takes the default
 			if ( ! is_email( $email ) ) {
 				$out['errors'][] = sprintf( __( 'Line %d: no valid email.', 'fw' ), $line );
 				continue;

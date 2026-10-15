@@ -139,6 +139,7 @@ add_action( 'unysonplus_membership_render_view', function ( $tab ) {
 		<?php FW_Membership_Admin_Page::form_fields( 'import_csv_upload' ); ?>
 		<header class="fw-mbr-panel__head"><h2><?php esc_html_e( 'From a CSV file', 'fw' ); ?></h2></header>
 		<p class="fw-mbr-muted"><?php echo esc_html( sprintf( __( 'One row per membership. Columns it understands: %s. With gateway and subscription_id, renewals keep arriving from the payment service as before.', 'fw' ), implode( ', ', FW_Membership_Importers::COLUMNS ) ) ); ?></p>
+		<p class="fw-mbr-muted"><?php esc_html_e( 'Moving members from another Unyson+ site? Members → Export CSV there gives a file in exactly these columns.', 'fw' ); ?></p>
 		<p><input type="file" name="csv" accept=".csv,text/csv" required /> <button type="submit" class="button button-primary"><?php esc_html_e( 'Upload and match columns', 'fw' ); ?></button></p>
 	</form>
 
