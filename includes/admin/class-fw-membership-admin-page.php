@@ -31,7 +31,6 @@ class FW_Membership_Admin_Page {
 
 		add_action( 'admin_menu', array( $this, '_action_admin_menu' ), 30 );
 		add_filter( 'fw_unysonplus_admin_submenu_order', array( $this, '_filter_submenu_order' ) );
-		add_action( 'wp_ajax_fw_mbr_focus', array( 'FW_Membership_App', '_ajax_focus' ) );
 	}
 
 	/** @internal */

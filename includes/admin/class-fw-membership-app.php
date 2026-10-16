@@ -15,40 +15,56 @@
  */
 class FW_Membership_App {
 
-	/** User meta: 1 while the person prefers the app without the WordPress menu. */
-	const FOCUS_META = 'fw_mbr_focus';
+	/** @var FW_Admin_App|null */
+	protected static $app = null;
 
 	/**
+	 * The shell, built once.
+	 *
+	 * The frame — the folded WordPress menu, the sidebar, the top bar, focus
+	 * mode — is the framework's `FW_Admin_App`. What stays here is the part that
+	 * is about Membership: its menu, its top-bar search and New menu, and the
+	 * small shared pieces its screens draw with.
+	 *
+	 * @return FW_Admin_App
+	 */
+	public static function app() {
+		if ( self::$app ) {
+			return self::$app;
+		}
+
+		if ( ! class_exists( 'FW_Admin_App' ) ) {
+			require_once fw_get_framework_directory( '/includes/admin-app/class-fw-admin-app.php' );
+		}
+
+		self::$app = new FW_Admin_App( 'membership', array(
+			'brand'      => array(
+				'label' => __( 'Membership', 'fw' ),
+				'icon'  => 'dashicons-awards',
+				'url'   => FW_Membership_Admin_Page::get_page_url( 'home' ),
+			),
+			'page'       => FW_Membership_Admin_Page::PAGE_SLUG,
+			'arg'        => 'tab',
+			'default'    => 'home',
+			'capability' => FW_Membership_Service::capability(),
+			'nav'        => array( __CLASS__, 'nav' ),
+		) );
+
+		return self::$app;
+	}
+
+	/**
+	 * Claim the Membership screen. Called once from the admin page, on `admin_menu`.
+	 *
 	 * @param string $hook_suffix The Membership page's hook suffix.
 	 */
 	public static function init( $hook_suffix ) {
-		add_filter( 'admin_body_class', function ( $classes ) use ( $hook_suffix ) {
-			$screen = get_current_screen();
-			if ( ! $screen || $screen->id !== $hook_suffix ) {
-				return $classes;
-			}
-			$classes .= ' fw-mbr-screen folded';
-			if ( self::is_focus() ) {
-				$classes .= ' fw-mbr-focus';
-			}
-			return $classes;
-		} );
+		self::app()->attach( $hook_suffix );
 	}
 
-	/** @internal admin-ajax: remember the focus-mode choice. */
-	public static function _ajax_focus() {
-		check_ajax_referer( 'fw_mbr_focus' );
-		if ( ! current_user_can( FW_Membership_Service::capability() ) ) {
-			wp_send_json_error( null, 403 );
-		}
-		$on = ! empty( $_POST['on'] ) && '0' !== $_POST['on']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		update_user_meta( get_current_user_id(), self::FOCUS_META, $on ? 1 : 0 );
-		wp_send_json_success( array( 'on' => $on ) );
-	}
-
-	/** @return bool */
+	/** @return bool Whether this person is hiding the WordPress menu on app screens. */
 	public static function is_focus() {
-		return (bool) get_user_meta( get_current_user_id(), self::FOCUS_META, true );
+		return FW_Admin_App::is_focus();
 	}
 
 	/* ---------------------------------------------------------------------- *
@@ -157,135 +173,73 @@ class FW_Membership_App {
 	 * @param string $actions Extra top-bar HTML (already escaped), right of search.
 	 */
 	public static function open( $view, array $crumbs, $actions = '' ) {
-		$base  = FW_Membership_Admin_Page::get_page_url();
+		$last  = count( $crumbs ) - 1;
+		$title = $last >= 0 ? (string) $crumbs[ $last ][0] : '';
+
+		self::app()->open( $view, array(
+			'title'   => $title,
+			'crumbs'  => $last > 0 ? array_slice( $crumbs, 0, $last ) : array(),
+			'search'  => self::search_form(),
+			'actions' => $actions . self::new_menu(),
+			// The content column keeps this extension's own classes: its screens
+			// style themselves against `.fw-mbr-body`.
+			'class'   => 'fw-ext-membership fw-mbr-body',
+		) );
+	}
+
+	/**
+	 * The top bar's member search.
+	 *
+	 * @return string
+	 */
+	protected static function search_form() {
 		$query = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$focus = self::is_focus();
+
+		ob_start();
 		?>
-		<div class="fw-mbr-app" id="fw-mbr-app"
-		     data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
-		     data-focus-nonce="<?php echo esc_attr( wp_create_nonce( 'fw_mbr_focus' ) ); ?>">
-
-			<nav class="fw-mbr-side" id="fw-mbr-side" aria-label="<?php esc_attr_e( 'Membership', 'fw' ); ?>">
-				<a class="fw-mbr-side__brand" href="<?php echo esc_url( FW_Membership_Admin_Page::get_page_url( 'home' ) ); ?>">
-					<span class="fw-mbr-side__mark" aria-hidden="true">
-						<span class="dashicons dashicons-awards"></span>
-					</span>
-					<span class="fw-mbr-side__name"><?php esc_html_e( 'Membership', 'fw' ); ?></span>
-				</a>
-
-				<div class="fw-mbr-side__groups">
-					<?php
-					foreach ( self::nav() as $group_key => $group ) :
-						$group['items'] = array_filter( (array) $group['items'], function ( $item ) {
-							return empty( $item['cap'] ) || current_user_can( $item['cap'] );
-						} );
-						if ( ! $group['items'] ) {
-							continue;
-						}
-						?>
-						<div class="fw-mbr-side__group">
-							<?php if ( '' !== (string) $group['label'] ) : ?>
-								<p class="fw-mbr-side__label" id="fw-mbr-nav-<?php echo esc_attr( $group_key ); ?>"><?php echo esc_html( $group['label'] ); ?></p>
-							<?php endif; ?>
-							<ul<?php echo '' !== (string) $group['label'] ? ' aria-labelledby="fw-mbr-nav-' . esc_attr( $group_key ) . '"' : ''; ?>>
-								<?php foreach ( $group['items'] as $slug => $item ) : ?>
-									<?php $here = $slug === $view; ?>
-									<li>
-										<a class="fw-mbr-side__link<?php echo $here ? ' is-active' : ''; ?><?php echo ! empty( $item['soon'] ) ? ' is-soon' : ''; ?>"
-										   href="<?php echo esc_url( ! empty( $item['url'] ) ? $item['url'] : add_query_arg( 'tab', $slug, $base ) ); ?>"
-											<?php echo $here ? 'aria-current="page"' : ''; ?>>
-											<span class="dashicons <?php echo esc_attr( $item['icon'] ); ?>" aria-hidden="true"></span>
-											<span class="fw-mbr-side__text"><?php echo esc_html( $item['label'] ); ?></span>
-											<?php if ( ! empty( $item['soon'] ) ) : ?>
-												<span class="fw-mbr-side__soon"><?php esc_html_e( 'Off', 'fw' ); ?></span>
-											<?php endif; ?>
-										</a>
-									</li>
-								<?php endforeach; ?>
-							</ul>
-						</div>
-					<?php endforeach; ?>
-				</div>
-
-				<div class="fw-mbr-side__foot">
-					<?php if ( self::can_open_crm() ) : ?>
-						<a class="fw-mbr-side__link" href="<?php echo esc_url( FW_CRM_Admin_Page::get_page_url() ); ?>">
-							<span class="dashicons dashicons-id-alt" aria-hidden="true"></span>
-							<span class="fw-mbr-side__text"><?php esc_html_e( 'Open the CRM', 'fw' ); ?></span>
-						</a>
-					<?php endif; ?>
-					<button type="button" class="fw-mbr-side__link fw-mbr-focus-toggle" aria-pressed="<?php echo $focus ? 'true' : 'false'; ?>"
-					        data-on="<?php esc_attr_e( 'Show the WordPress menu', 'fw' ); ?>"
-					        data-off="<?php esc_attr_e( 'Hide the WordPress menu', 'fw' ); ?>">
-						<span class="dashicons dashicons-editor-contract" aria-hidden="true"></span>
-						<span class="fw-mbr-side__text"><?php echo $focus ? esc_html__( 'Show the WordPress menu', 'fw' ) : esc_html__( 'Hide the WordPress menu', 'fw' ); ?></span>
-					</button>
-					<a class="fw-mbr-side__link fw-mbr-side__back" href="<?php echo esc_url( admin_url() ); ?>">
-						<span class="dashicons dashicons-wordpress" aria-hidden="true"></span>
-						<span class="fw-mbr-side__text"><?php esc_html_e( 'Back to WordPress', 'fw' ); ?></span>
-					</a>
-				</div>
-			</nav>
-
-			<div class="fw-mbr-main">
-				<header class="fw-mbr-top">
-					<button type="button" class="fw-mbr-top__menu" aria-controls="fw-mbr-side" aria-expanded="false">
-						<span class="dashicons dashicons-menu-alt" aria-hidden="true"></span>
-						<span class="screen-reader-text"><?php esc_html_e( 'Membership menu', 'fw' ); ?></span>
-					</button>
-
-					<div class="fw-mbr-top__title">
-						<?php
-						$last = count( $crumbs ) - 1;
-						if ( $last > 0 ) :
-							?>
-							<ol class="fw-mbr-crumbs">
-								<?php foreach ( array_slice( $crumbs, 0, $last ) as $crumb ) : ?>
-									<li><a href="<?php echo esc_url( $crumb[1] ); ?>"><?php echo esc_html( $crumb[0] ); ?></a></li>
-								<?php endforeach; ?>
-							</ol>
-						<?php endif; ?>
-						<h1><?php echo esc_html( $crumbs[ $last ][0] ); ?></h1>
-					</div>
-
-					<form class="fw-mbr-search" role="search" method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
-						<input type="hidden" name="page" value="<?php echo esc_attr( FW_Membership_Admin_Page::PAGE_SLUG ); ?>" />
-						<input type="hidden" name="tab" value="members" />
-						<label class="screen-reader-text" for="fw-mbr-q"><?php esc_html_e( 'Search members', 'fw' ); ?></label>
-						<span class="dashicons dashicons-search" aria-hidden="true"></span>
-						<input type="search" id="fw-mbr-q" name="q" value="<?php echo esc_attr( $query ); ?>"
-						       placeholder="<?php esc_attr_e( 'Search members by name or email', 'fw' ); ?>" autocomplete="off" />
-						<kbd aria-hidden="true">/</kbd>
-					</form>
-
-					<div class="fw-mbr-top__actions">
-						<?php echo $actions; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by the caller. ?>
-						<details class="fw-mbr-new">
-							<summary class="button button-primary">
-								<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
-								<?php esc_html_e( 'New', 'fw' ); ?>
-							</summary>
-							<ul class="fw-mbr-new__menu">
-								<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'members', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-admin-users" aria-hidden="true"></span><?php esc_html_e( 'Add a member', 'fw' ); ?></a></li>
-								<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'plans', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-awards" aria-hidden="true"></span><?php esc_html_e( 'Plan', 'fw' ); ?></a></li>
-								<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'rules', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-lock" aria-hidden="true"></span><?php esc_html_e( 'Access rule', 'fw' ); ?></a></li>
-							</ul>
-						</details>
-					</div>
-				</header>
-
-				<div class="wrap fw-ext-membership fw-mbr-body">
-					<hr class="wp-header-end" />
+		<form class="fw-mbr-search" role="search" method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+			<input type="hidden" name="page" value="<?php echo esc_attr( FW_Membership_Admin_Page::PAGE_SLUG ); ?>" />
+			<input type="hidden" name="tab" value="members" />
+			<label class="screen-reader-text" for="fw-mbr-q"><?php esc_html_e( 'Search members', 'fw' ); ?></label>
+			<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			<input type="search" id="fw-mbr-q" name="q" value="<?php echo esc_attr( $query ); ?>"
+			       placeholder="<?php esc_attr_e( 'Search members by name or email', 'fw' ); ?>" autocomplete="off" />
+			<kbd aria-hidden="true">/</kbd>
+		</form>
 		<?php
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The top bar's "New" menu.
+	 *
+	 * @return string
+	 */
+	protected static function new_menu() {
+		$base = FW_Membership_Admin_Page::get_page_url();
+
+		ob_start();
+		?>
+		<details class="fw-mbr-new">
+			<summary class="button button-primary">
+				<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
+				<?php esc_html_e( 'New', 'fw' ); ?>
+			</summary>
+			<ul class="fw-mbr-new__menu">
+				<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'members', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-admin-users" aria-hidden="true"></span><?php esc_html_e( 'Add a member', 'fw' ); ?></a></li>
+				<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'plans', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-awards" aria-hidden="true"></span><?php esc_html_e( 'Plan', 'fw' ); ?></a></li>
+				<li><a href="<?php echo esc_url( add_query_arg( array( 'tab' => 'rules', 'new' => 1 ), $base ) ); ?>"><span class="dashicons dashicons-lock" aria-hidden="true"></span><?php esc_html_e( 'Access rule', 'fw' ); ?></a></li>
+			</ul>
+		</details>
+		<?php
+
+		return (string) ob_get_clean();
 	}
 
 	/** Close the frame opened by open(). */
 	public static function close() {
-		?>
-				</div>
-			</div>
-		</div>
-		<?php
+		self::app()->close();
 	}
 
 	/**

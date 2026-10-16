@@ -277,13 +277,20 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.23';
+$manifest['version']    = '1.0.24';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';
 
-// No hard requirements: the CRM, Forms and WooCommerce connections are modules that
-// switch on only when those extensions are active.
+// No hard requirements on OTHER EXTENSIONS: the CRM, Forms and WooCommerce
+// connections are modules that switch on only when those extensions are active.
+// The framework itself is a different matter — these screens render inside its
+// app shell.
+$manifest['requirements'] = array(
+	'framework' => array(
+		'min_version' => '3.0.49', // class FW_Admin_App — the admin app shell.
+	),
+);
 
 // Repository Info
 $manifest['github_update'] = 'UnysonPlus/UnysonPlus-Membership-Extension';
