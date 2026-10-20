@@ -264,6 +264,14 @@ class FW_Membership_Accounts {
 		}
 		/** More ways to log in under the form (a login link by email, a passkey). */
 		$more = (string) apply_filters( 'unysonplus_membership_login_form_after', '', '' !== $redirect ? $redirect : remove_query_arg( array( 'fw_mbr_notice', 'redirect_to' ), $here ) );
-		return '<div class="fw-mbr-login">' . $form . $more . ( $links ? '<p class="fw-mbr-login__links">' . implode( ' <span aria-hidden="true">·</span> ', $links ) . '</p>' : '' ) . '</div>';
+		$html = '<div class="fw-mbr-login">' . $form . $more . ( $links ? '<p class="fw-mbr-login__links">' . implode( ' <span aria-hidden="true">·</span> ', $links ) . '</p>' : '' ) . '</div>';
+		/**
+		 * The Form Styles preset the login form wears, so it matches the site's other forms ('default' = the
+		 * site's default form style, a `formp-*` class = that one, '' = Membership's own look). Needs Forms.
+		 *
+		 * @param string $style
+		 */
+		$style = class_exists( 'FW_Forms_Style_Presets' ) ? FW_Forms_Style_Presets::resolve( (string) apply_filters( 'unysonplus_membership_form_style', 'default' ) ) : '';
+		return '' !== $style ? '<div class="fw-mbr-login-style ' . esc_attr( $style ) . '">' . $html . '</div>' : $html;
 	}
 }
