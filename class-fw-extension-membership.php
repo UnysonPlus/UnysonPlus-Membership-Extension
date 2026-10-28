@@ -78,6 +78,25 @@ class FW_Extension_Membership extends FW_Extension {
 			WP_CLI::add_command( 'membership', 'FW_Membership_CLI' );
 		}
 
+		// A workspace: a role can open to Membership instead of the WordPress dashboard (core 3.0.55+).
+		add_action( 'fw_workspaces_register', function () {
+			fw_register_workspace( 'membership', array(
+				'label'       => __( 'Membership', 'fw' ),
+				'icon'        => 'dashicons-awards',
+				'page'        => 'fw-membership',
+				'capability'  => FW_Membership_Service::capability(),
+				'description' => __( 'Members, plans and access. For staff who look after a members’ site.', 'fw' ),
+				// The one-click set-up (Admin Menu → Roles): members (Subscribers) are kept out of wp-admin.
+				'members'     => array( 'subscriber' ),
+				'setup'       => __( 'Run a members’ site', 'fw' ),
+			) );
+		} );
+		// Members kept out of wp-admin land on their account page.
+		add_filter( 'fw_workspaces_member_home', function ( $url ) {
+			$account = FW_Membership_Settings::account_url();
+			return 0 === strpos( $account, admin_url() ) ? $url : $account;
+		} );
+
 		if ( is_admin() ) {
 			require_once $dir . 'admin/class-fw-membership-app.php';
 			require_once $dir . 'admin/class-fw-membership-admin-page.php';
