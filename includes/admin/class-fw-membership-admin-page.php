@@ -39,29 +39,20 @@ class FW_Membership_Admin_Page {
 			return;
 		}
 
-		// The Unyson+ menu is for administrators. Someone given Membership through the
-		// unysonplus_membership_capability filter (a membership manager role) but not
-		// manage_options gets Membership as a menu of its own, as the CRM does.
-		if ( ! current_user_can( 'manage_options' ) ) {
-			$this->hook_suffix = add_menu_page(
-				__( 'Membership', 'fw' ),
-				__( 'Membership', 'fw' ),
-				FW_Membership_Service::capability(),
-				self::PAGE_SLUG,
-				array( $this, 'render_page' ),
-				'dashicons-awards',
-				4
-			);
-		} else {
-			$this->hook_suffix = add_submenu_page(
-				self::PARENT_SLUG,
-				__( 'Membership', 'fw' ),
-				__( 'Membership', 'fw' ),
-				FW_Membership_Service::capability(),
-				self::PAGE_SLUG,
-				array( $this, 'render_page' )
-			);
-		}
+		// Membership is a business app with its own operator role (a membership manager),
+		// so it sits at the TOP LEVEL for everyone rather than inside the Unyson+
+		// (developer / site-config) menu - a destination you work in, beside the other
+		// apps (CRM, Forms, Visitor Insights, SEO). Previously admins saw it as a Unyson+
+		// submenu.
+		$this->hook_suffix = add_menu_page(
+			__( 'Membership', 'fw' ),
+			__( 'Membership', 'fw' ),
+			FW_Membership_Service::capability(),
+			self::PAGE_SLUG,
+			array( $this, 'render_page' ),
+			'dashicons-awards',
+			27
+		);
 
 		if ( $this->hook_suffix ) {
 			FW_Membership_App::init( $this->hook_suffix );
