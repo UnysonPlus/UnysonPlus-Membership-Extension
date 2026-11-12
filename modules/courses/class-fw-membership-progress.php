@@ -156,6 +156,37 @@ class FW_Membership_Progress {
 		return null;
 	}
 
+	/**
+	 * Why a logged-out visitor cannot open a lesson yet, or null when they can.
+	 *
+	 * @param int $lesson_id
+	 *
+	 * @return string|null
+	 */
+	public static function why_locked_visitor( $lesson_id ) {
+		$course = (int) wp_get_post_parent_id( $lesson_id );
+		if ( ! $course ) {
+			return null;
+		}
+		$days = (int) get_post_meta( $lesson_id, '_fw_drip_days', true );
+		if ( $days > 0 ) {
+			/* translators: %d: number of days. */
+			return sprintf( _n( 'This lesson opens %d day after you start the course. Log in or create an account to start it.', 'This lesson opens %d days after you start the course. Log in or create an account to start it.', $days, 'fw' ), $days );
+		}
+		if ( class_exists( 'FW_Membership_Quizzes' ) ) {
+			foreach ( FW_Membership_Courses::lessons( $course ) as $l ) {
+				if ( (int) $l->ID === (int) $lesson_id ) {
+					break;
+				}
+				if ( FW_Membership_Quizzes::gates( $l->ID ) ) {
+					/* translators: %s: lesson title. */
+					return sprintf( __( 'Pass the quiz in “%s” first. Log in or create an account to take it.', 'fw' ), get_the_title( $l ) );
+				}
+			}
+		}
+		return null;
+	}
+
 	/** @return array { prev: WP_Post|null, next: WP_Post|null } */
 	public static function neighbours( $lesson_id ) {
 		$list = FW_Membership_Courses::lessons( (int) wp_get_post_parent_id( $lesson_id ) );
@@ -180,7 +211,16 @@ class FW_Membership_Progress {
 
 	/** @internal Opening a lesson you may see enrols you and remembers where you are. */
 	public static function _enroll_on_view() {
-		if ( ! is_singular( FW_Membership_Courses::LESSON ) || ! is_user_logged_in() ) {
+		if ( ! is_singular( FW_Membership_Courses::LESSON ) ) {
+			return;
+		}
+		if ( ! is_user_logged_in() ) {
+			// A course open to Everyone: a visitor has no start date and no quiz passes, so a
+			// lesson that opens after some days or sits behind a quiz stays locked until they log in.
+			$lesson = get_queried_object();
+			if ( $lesson && (int) $lesson->post_parent && FW_Membership_Access::can( $lesson ) ) {
+				self::$locked = self::why_locked_visitor( $lesson->ID );
+			}
 			return;
 		}
 		$lesson = get_queried_object();
@@ -228,7 +268,9 @@ class FW_Membership_Progress {
 			. ( '' !== (string) get_post_meta( $lesson->ID, '_fw_module', true ) ? ' <span aria-hidden="true">›</span> ' . esc_html( (string) get_post_meta( $lesson->ID, '_fw_module', true ) ) : '' ) . '</nav>'
 			. ( $uid ? self::bar( $pct ) : '' );
 		if ( null !== self::$locked ) {
-			return $head . '<div class="fw-mbr-gate"><p class="fw-mbr-gate__title">' . esc_html__( 'Not open yet', 'fw' ) . '</p><p>' . esc_html( self::$locked ) . '</p></div>';
+			return $head . '<div class="fw-mbr-gate"><p class="fw-mbr-gate__title">' . esc_html__( 'Not open yet', 'fw' ) . '</p><p>' . esc_html( self::$locked ) . '</p>'
+				. ( $uid ? '' : '<p><a class="' . esc_attr( FW_Membership_Settings::button_class() ) . '" href="' . esc_url( FW_Membership_Settings::login_url( get_permalink( $lesson ) ) ) . '">' . esc_html__( 'Log in', 'fw' ) . '</a></p>' )
+				. '</div>';
 		}
 		$n    = self::neighbours( $lesson->ID );
 		$done = $uid && in_array( (int) $lesson->ID, self::completed( $uid, $course ), true );

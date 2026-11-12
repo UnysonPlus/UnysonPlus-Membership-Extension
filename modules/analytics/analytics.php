@@ -74,7 +74,9 @@ add_action( 'unysonplus_membership_render_view', function ( $tab ) {
 	$table   = FW_Membership_Reports::monthly_table( 12 );
 	$ltv     = FW_Membership_Reports::ltv();
 	$trials  = FW_Membership_Reports::trials();
-	$last    = end( $table );
+	// The last full month: the table's final row is the current month, still running.
+	$rows    = array_values( $table );
+	$last    = count( $rows ) > 1 ? $rows[ count( $rows ) - 2 ] : null;
 	$cur     = class_exists( 'FW_Membership_Gateways' ) ? FW_Membership_Gateways::currency() : (string) array_key_first( $mrr['total'] );
 	$failed  = array_sum( wp_list_pluck( $table, 'failed' ) );
 	$recov   = array_sum( wp_list_pluck( $table, 'recovered' ) );
@@ -85,7 +87,7 @@ add_action( 'unysonplus_membership_render_view', function ( $tab ) {
 	$cards = array(
 		array( __( 'Monthly recurring revenue', 'fw' ), FW_Membership_Reports::money_list( $mrr['total'] ) ),
 		array( __( 'Paying members', 'fw' ), number_format_i18n( $mrr['members'] ) ),
-		array( __( 'Churn last month', 'fw' ), $last ? $last['churn'] . '%' : '—' ),
+		array( __( 'Churn last month', 'fw' ), $last && $last['start_members'] ? $last['churn'] . '%' : '—' ),
 		array( __( 'Lifetime value (average)', 'fw' ), FW_Membership_Reports::money_list( $avg_ltv ) ),
 		array( __( 'Trial conversion', 'fw' ), $trials['started'] ? $trials['rate'] . '%' : '—' ),
 		array( __( 'Failed payments recovered', 'fw' ), $failed ? round( 100 * $recov / $failed ) . '%' : '—' ),

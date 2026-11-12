@@ -14,6 +14,27 @@ $manifest['description'] = __(
 /**
  * Changelog ----------------------------------------------------------------
  *
+ * 1.0.29 - Import / Export. Membership -> Import becomes Import / Export: download the
+ *         members (CSV) or the whole set-up (JSON: every plan and price, every access rule,
+ *         and the settings: member pages, emails, profile fields, modules, payments, paywall,
+ *         retention, directory, cards, CRM connection), and import either back, with a dry
+ *         run. The set-up file names things instead of using ids (plans by slug, pages and
+ *         posts by type + path, terms by taxonomy + slug), so it moves between sites;
+ *         re-importing on the same site changes nothing. Payment secret keys are never
+ *         written and never overwritten (FW_Membership_Setup). Also: switched-off areas in
+ *         the sidebar say "Off" again and "Open the CRM" is back in its foot (both through
+ *         the app shell's new `badge` / `links`); a module's own scheduled job shows on
+ *         Home -> Scheduled jobs (filter unysonplus_membership_jobs); requires core 3.0.55.
+ *
+ * 1.0.27 - A Membership workspace. A role can open straight to Membership instead of the
+ *         WordPress dashboard (Unyson+ -> Admin Menu -> Roles), and the one-click set-up
+ *         "Run a members' site" keeps members (Subscribers) out of wp-admin; members kept
+ *         out land on their account page (filter fw_workspaces_member_home). Needs core 3.0.55.
+ *
+ * 1.0.25 - The Member Login form wears the site's Form Style: the default preset from
+ *         Theme Settings -> Components -> Form Styles when the Forms extension is on
+ *         (filter unysonplus_membership_form_style to pick another).
+ *
  * 1.0.23 - Webhooks and add-on modules. A Webhooks module (Membership -> Webhooks)
  *         posts every membership event, payments and course events as signed JSON
  *         (X-Webhook-Signature t=..,v1=HMAC-SHA256 of "t.body", as the other Unyson+
@@ -277,7 +298,7 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.28';
+$manifest['version']    = '1.0.29';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';
@@ -288,7 +309,7 @@ $manifest['thumbnail']  = 'thumbnail.svg';
 // app shell.
 $manifest['requirements'] = array(
 	'framework' => array(
-		'min_version' => '3.0.49', // class FW_Admin_App — the admin app shell.
+		'min_version' => '3.0.55', // FW_Admin_App (the app shell, 3.0.49) + fw_register_workspace() (3.0.55).
 	),
 );
 

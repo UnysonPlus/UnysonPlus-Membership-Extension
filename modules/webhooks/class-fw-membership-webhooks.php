@@ -39,6 +39,10 @@ class FW_Membership_Webhooks {
 			$hooks[] = FW_Membership_Webhooks::CRON;
 			return $hooks;
 		} );
+		add_filter( 'unysonplus_membership_jobs', function ( $jobs ) {
+			$jobs[ FW_Membership_Webhooks::CRON ] = array( __( 'Webhooks: send waiting events', 'fw' ), 5 * MINUTE_IN_SECONDS );
+			return $jobs;
+		} );
 		add_filter( 'cron_schedules', function ( $s ) {
 			$s['fw_mbr_five_minutes'] = array( 'interval' => 5 * MINUTE_IN_SECONDS, 'display' => __( 'Every five minutes', 'fw' ) );
 			return $s;

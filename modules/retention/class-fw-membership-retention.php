@@ -98,7 +98,8 @@ class FW_Membership_Retention {
 			'remind_renewal'  => max( 0, (int) ( $r['ret_remind_renewal'] ?? 0 ) ),
 			'remind_trial'    => max( 0, (int) ( $r['ret_remind_trial'] ?? 0 ) ),
 			'remind_expiring' => max( 0, (int) ( $r['ret_remind_expiring'] ?? 0 ) ),
-			'winback'         => empty( $r['ret_winback'] ) ? 0 : 1,
+			// The box is greyed out (so never sent) while Coupons is off: keep what was saved.
+			'winback'         => class_exists( 'FW_Membership_Coupons' ) ? ( empty( $r['ret_winback'] ) ? 0 : 1 ) : (int) $d['winback'],
 			'winback_days'    => max( 1, (int) ( $r['ret_winback_days'] ?? 7 ) ),
 			'winback_percent' => max( 1, min( 100, (int) ( $r['ret_winback_percent'] ?? 20 ) ) ),
 		), false );

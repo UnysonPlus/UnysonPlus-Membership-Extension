@@ -20,20 +20,27 @@ class FW_Membership_Service {
 
 	public static function init() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'expire_due' ) );
-		// Remember when each scheduled job last ran (Membership → Home → Scheduled jobs).
-		foreach ( (array) apply_filters( 'unysonplus_membership_cron_hooks', array( self::CRON_HOOK, 'fw_mbr_drip_daily', 'fw_mbr_retention_daily' ) ) as $hook ) {
-			add_action( $hook, function () use ( $hook ) {
-				$last          = (array) get_option( 'fw_ext_membership_cron_last', array() );
-				$last[ $hook ] = time();
-				update_option( 'fw_ext_membership_cron_last', $last, false );
-			}, 0 );
-		}
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			wp_schedule_event( time() + 300, 'hourly', self::CRON_HOOK );
 		}
 
 		// A deleted WordPress user takes their memberships and history along.
 		add_action( 'deleted_user', array( 'FW_Membership_Memberships', 'delete_for_user' ) );
+	}
+
+	/**
+	 * Remember when each scheduled job last ran (Membership → Home → Scheduled jobs).
+	 * Called after the modules load, so the jobs they add through
+	 * `unysonplus_membership_cron_hooks` are tracked too.
+	 */
+	public static function track_jobs() {
+		foreach ( array_unique( (array) apply_filters( 'unysonplus_membership_cron_hooks', array( self::CRON_HOOK, 'fw_mbr_drip_daily', 'fw_mbr_retention_daily' ) ) ) as $hook ) {
+			add_action( $hook, function () use ( $hook ) {
+				$last          = (array) get_option( 'fw_ext_membership_cron_last', array() );
+				$last[ $hook ] = time();
+				update_option( 'fw_ext_membership_cron_last', $last, false );
+			}, 0 );
+		}
 	}
 
 	/**

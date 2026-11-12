@@ -48,6 +48,7 @@ class FW_Membership_App {
 			'default'    => 'home',
 			'capability' => FW_Membership_Service::capability(),
 			'nav'        => array( __CLASS__, 'nav' ),
+			'links'      => array( __CLASS__, 'side_links' ),
 		) );
 
 		return self::$app;
@@ -72,9 +73,9 @@ class FW_Membership_App {
 	 * ---------------------------------------------------------------------- */
 
 	/**
-	 * The sidebar, in groups. `soon` marks an area that is planned but not built yet:
-	 * it stays in the menu so the shape of the extension is visible, and its screen
-	 * says plainly what it will do.
+	 * The sidebar, in groups. `soon` greys out an area whose module is switched off: it
+	 * stays in the menu so the shape of the extension is visible, wears an "Off" badge
+	 * (`badge`), and its screen says what it does and links to Modules.
 	 *
 	 * @return array group => { label, items: view => { label, icon, soon?, url? } }
 	 */
@@ -92,14 +93,14 @@ class FW_Membership_App {
 			'selling' => array(
 				'label' => __( 'Selling', 'fw' ),
 				'items' => array(
-					'payments' => array( 'label' => __( 'Payments', 'fw' ), 'icon' => 'dashicons-money-alt', 'soon' => true ),
-					'coupons'  => array( 'label' => __( 'Coupons', 'fw' ), 'icon' => 'dashicons-tickets-alt', 'soon' => true ),
+					'payments' => array( 'label' => __( 'Payments', 'fw' ), 'icon' => 'dashicons-money-alt', 'soon' => true, 'badge' => __( 'Off', 'fw' ) ),
+					'coupons'  => array( 'label' => __( 'Coupons', 'fw' ), 'icon' => 'dashicons-tickets-alt', 'soon' => true, 'badge' => __( 'Off', 'fw' ) ),
 				),
 			),
 			'insights' => array(
 				'label' => __( 'Insights', 'fw' ),
 				'items' => array(
-					'reports' => array( 'label' => __( 'Reports', 'fw' ), 'icon' => 'dashicons-chart-bar', 'soon' => true ),
+					'reports' => array( 'label' => __( 'Reports', 'fw' ), 'icon' => 'dashicons-chart-bar', 'soon' => true, 'badge' => __( 'Off', 'fw' ) ),
 				),
 			),
 			'setup'   => array(
@@ -119,6 +120,20 @@ class FW_Membership_App {
 		 * A view added here renders on the `unysonplus_membership_render_view` action.
 		 */
 		return (array) apply_filters( 'unysonplus_membership_nav', $nav );
+	}
+
+	/**
+	 * Extra links at the foot of the sidebar: "Open the CRM" when the CRM is active and
+	 * this person may use it.
+	 *
+	 * @return array list of { label, icon, url }
+	 */
+	public static function side_links() {
+		$links = array();
+		if ( self::can_open_crm() ) {
+			$links[] = array( 'label' => __( 'Open the CRM', 'fw' ), 'icon' => 'dashicons-groups', 'url' => FW_CRM_Admin_Page::get_page_url() );
+		}
+		return $links;
 	}
 
 	/**
@@ -341,7 +356,7 @@ class FW_Membership_App {
 	}
 
 	/**
-	 * "3 hours ago", with the exact time on hover.
+	 * "3 hours ago" (or "in 5 days" for a future time), with the exact time on hover.
 	 *
 	 * @param string|null $mysql A local MySQL datetime.
 	 *
@@ -353,7 +368,7 @@ class FW_Membership_App {
 			return '<span aria-hidden="true">—</span>';
 		}
 		$now  = current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp -- compared with a local datetime.
-		$text = $now - $time < 45
+		$text = abs( $now - $time ) < 45
 			? __( 'just now', 'fw' )
 			: ( $time > $now ? sprintf( __( 'in %s', 'fw' ), human_time_diff( $now, $time ) ) : sprintf( __( '%s ago', 'fw' ), human_time_diff( $time, $now ) ) );
 
@@ -386,18 +401,15 @@ class FW_Membership_App {
 	}
 
 	/**
-	 * The screen for an area that is planned but not built yet.
+	 * The screen for an area whose module is switched off.
 	 *
 	 * @param string $view
 	 */
 	public static function render_soon( $view ) {
 		$about = array(
-			'rules'    => __( 'Choose what is protected (the whole site, post types, single pages, categories, archives, URL patterns), who may see it (plans, roles, logged-in visitors) and what everyone else sees instead: a teaser, a login form, the pricing table or a redirect.', 'fw' ),
 			'payments' => __( 'Every payment, renewal and refund in one place, taken with your own payment accounts. Plans get a checkout and a pricing table, with no transaction fee from Unyson+.', 'fw' ),
 			'coupons'  => __( 'Discount codes for the first payment or for ever, with usage limits, expiry dates and bulk codes.', 'fw' ),
 			'reports'  => __( 'Monthly recurring revenue, new and lost members, churn, lifetime value and trial conversion, by plan and period.', 'fw' ),
-			'emails'   => __( 'Every email members receive (welcome, receipt, renewal reminder, payment failed, cancelled, expired), editable with placeholders.', 'fw' ),
-			'settings' => __( 'Site-wide defaults: what non-members see, login and registration pages, redirects after login, and removing all Membership data.', 'fw' ),
 		);
 		$item = self::item( $view );
 

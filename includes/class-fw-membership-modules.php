@@ -41,7 +41,7 @@ class FW_Membership_Modules {
 			'woocommerce' => array( __( 'WooCommerce', 'fw' ), __( 'Products that grant plans, member prices and free shipping, and members-only products.', 'fw' ), 'dashicons-cart', 8 ),
 			'analytics'   => array( __( 'Reports', 'fw' ), __( 'Monthly recurring revenue, churn, lifetime value, trial conversion and cohorts.', 'fw' ), 'dashicons-chart-area', 9 ),
 			'security'    => array( __( 'Account security', 'fw' ), __( 'Limit simultaneous sessions, one-click login links that work once, passkeys and a login log.', 'fw' ), 'dashicons-shield', 10 ),
-			'importers'   => array( __( 'Importers', 'fw' ), __( 'Bring in members and live subscriptions from a CSV file (such as an export from another plugin), or give plans to everyone with a WordPress role or user field.', 'fw' ), 'dashicons-database-import', 10 ),
+			'importers'   => array( __( 'Import / Export', 'fw' ), __( 'Export members (CSV) and the whole set-up (a JSON file) and bring them in on another site; import members and live subscriptions from a CSV file (such as an export from another plugin), or give plans to everyone with a WordPress role or user field.', 'fw' ), 'dashicons-database-import', 10 ),
 			'webhooks'    => array( __( 'Webhooks', 'fw' ), __( 'Tell another app the moment members join, renew, cancel, pay or finish a course: signed JSON, sent in the background with retries.', 'fw' ), 'dashicons-rest-api', 12 ),
 			'courses'     => array( __( 'Courses', 'fw' ), __( 'Courses with lessons, progress, quizzes and certificates on the same access rules.', 'fw' ), 'dashicons-welcome-learn-more', 11 ),
 		);

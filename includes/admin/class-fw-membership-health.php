@@ -27,8 +27,14 @@ class FW_Membership_Health {
 		if ( FW_Membership_Modules::is_on( 'retention' ) ) {
 			$list['fw_mbr_retention_daily'] = array( __( 'Retention: reminders, payment follow-ups, pauses ending', 'fw' ), DAY_IN_SECONDS );
 		}
-		$now = time();
-		$out = array();
+		/**
+		 * Filters the jobs on the Scheduled jobs card: hook => array( label, seconds between runs ).
+		 * A module that schedules its own job adds it here (and to `unysonplus_membership_cron_hooks`,
+		 * so its last run is recorded).
+		 */
+		$list = (array) apply_filters( 'unysonplus_membership_jobs', $list );
+		$now  = time();
+		$out  = array();
 		foreach ( $list as $hook => $j ) {
 			$next  = (int) wp_next_scheduled( $hook );
 			$ran   = (int) ( $last[ $hook ] ?? 0 );

@@ -140,7 +140,16 @@ class FW_Membership_Metered {
 		$p  = array( 'day' => __( 'today', 'fw' ), 'week' => __( 'this week', 'fw' ), 'month' => __( 'this month', 'fw' ) );
 		$args['title'] = sprintf( __( 'You have read your free articles %s', 'fw' ), $p[ $s['period'] ] ?? $p['month'] );
 		if ( ! $in && (int) $s['account_limit'] > (int) $s['visitor_limit'] ) {
-			$args['message'] = sprintf( __( 'Create a free account to read %d a month, or join to read everything.', 'fw' ), (int) $s['account_limit'] );
+			$n    = (int) $s['account_limit'];
+			$msgs = array(
+				/* translators: %d: free reads for an account. */
+				'day'   => __( 'Create a free account to read %d a day, or join to read everything.', 'fw' ),
+				/* translators: %d: free reads for an account. */
+				'week'  => __( 'Create a free account to read %d a week, or join to read everything.', 'fw' ),
+				/* translators: %d: free reads for an account. */
+				'month' => __( 'Create a free account to read %d a month, or join to read everything.', 'fw' ),
+			);
+			$args['message'] = sprintf( $msgs[ $s['period'] ] ?? $msgs['month'], $n );
 		} elseif ( ! isset( $args['message'] ) ) {
 			$args['message'] = __( 'Join to read everything, whenever you like.', 'fw' );
 		}

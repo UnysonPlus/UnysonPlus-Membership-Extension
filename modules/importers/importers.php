@@ -3,14 +3,15 @@
 }
 
 /**
- * The Importers module (Membership → Modules → Importers): Membership → Import, for a CSV
- * file or for members kept as a WordPress role or a user field.
+ * The Import / Export module (Membership → Modules): Membership → Import / Export. Exports the
+ * members (CSV) and the whole set-up (JSON, FW_Membership_Setup), and imports both back; also
+ * imports members kept as a WordPress role or a user field.
  */
 
 require_once dirname( __FILE__ ) . '/class-fw-membership-importers.php';
 
 add_filter( 'unysonplus_membership_nav', function ( $nav ) {
-	$nav['setup']['items']['import'] = array( 'label' => __( 'Import', 'fw' ), 'icon' => 'dashicons-database-import' );
+	$nav['setup']['items']['import'] = array( 'label' => __( 'Import / Export', 'fw' ), 'icon' => 'dashicons-database-import' );
 	return $nav;
 } );
 
@@ -135,11 +136,33 @@ add_action( 'unysonplus_membership_render_view', function ( $tab ) {
 	endif;
 	// phpcs:enable
 	?>
+	<section class="fw-mbr-panel">
+		<header class="fw-mbr-panel__head"><h2><?php esc_html_e( 'Export', 'fw' ); ?></h2></header>
+		<p class="fw-mbr-muted"><?php esc_html_e( 'Two files, both read back by this screen on any site with Membership:', 'fw' ); ?></p>
+		<ul style="list-style:disc;margin:0 0 12px 20px">
+			<li><strong><?php esc_html_e( 'Members (CSV)', 'fw' ); ?></strong> — <?php esc_html_e( 'one row per membership, for a spreadsheet or to move members. Members → Export CSV gives the same file for the members a filter shows.', 'fw' ); ?></li>
+			<li><strong><?php esc_html_e( 'Set-up (JSON)', 'fw' ); ?></strong> — <?php esc_html_e( 'every plan and price, every access rule, and all Membership settings (member pages, emails, profile fields, modules, payments, paywall, retention). No members, and never your payment keys.', 'fw' ); ?></li>
+		</ul>
+		<p>
+			<a class="button button-primary" href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'export_members', array(), 'import' ) ); ?>"><?php esc_html_e( 'Download members (CSV)', 'fw' ); ?></a>
+			<a class="button" href="<?php echo esc_url( FW_Membership_Admin_Page::action_url( 'export_setup', array(), 'import' ) ); ?>"><?php esc_html_e( 'Download set-up (JSON)', 'fw' ); ?></a>
+		</p>
+	</section>
+
+	<form method="post" enctype="multipart/form-data" class="fw-mbr-panel">
+		<?php FW_Membership_Admin_Page::form_fields( 'import_setup' ); ?>
+		<header class="fw-mbr-panel__head"><h2><?php esc_html_e( 'From a set-up file (JSON)', 'fw' ); ?></h2></header>
+		<p class="fw-mbr-muted"><?php esc_html_e( 'Plans are matched by slug and access rules by name: a match is updated, anything else is added, nothing is deleted. Settings in the file replace the ones on this site; your payment keys are kept. Pages and posts are found by their address; anything not on this site is listed after the import.', 'fw' ); ?></p>
+		<p><input type="file" name="setup" accept=".json,application/json" required />
+			<label><input type="checkbox" name="dry_run" value="1" checked /> <?php esc_html_e( 'Dry run', 'fw' ); ?></label>
+			<button type="submit" class="button"><?php esc_html_e( 'Import the set-up', 'fw' ); ?></button></p>
+	</form>
+
 	<form method="post" enctype="multipart/form-data" class="fw-mbr-panel">
 		<?php FW_Membership_Admin_Page::form_fields( 'import_csv_upload' ); ?>
 		<header class="fw-mbr-panel__head"><h2><?php esc_html_e( 'From a CSV file', 'fw' ); ?></h2></header>
 		<p class="fw-mbr-muted"><?php echo esc_html( sprintf( __( 'One row per membership. Columns it understands: %s. With gateway and subscription_id, renewals keep arriving from the payment service as before.', 'fw' ), implode( ', ', FW_Membership_Importers::COLUMNS ) ) ); ?></p>
-		<p class="fw-mbr-muted"><?php esc_html_e( 'Moving members from another Unyson+ site? Members → Export CSV there gives a file in exactly these columns.', 'fw' ); ?></p>
+		<p class="fw-mbr-muted"><?php esc_html_e( 'Moving members from another Unyson+ site? Download members (CSV) there, under Export, gives a file in exactly these columns.', 'fw' ); ?></p>
 		<p><input type="file" name="csv" accept=".csv,text/csv" required /> <button type="submit" class="button button-primary"><?php esc_html_e( 'Upload and match columns', 'fw' ); ?></button></p>
 	</form>
 

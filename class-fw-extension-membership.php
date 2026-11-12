@@ -72,6 +72,7 @@ class FW_Extension_Membership extends FW_Extension {
 		FW_Membership_Form_Fields::init();
 		FW_Membership_REST::init();
 		FW_Membership_Modules::load();
+		FW_Membership_Service::track_jobs();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			require_once $dir . 'class-fw-membership-cli.php';
@@ -113,6 +114,7 @@ class FW_Extension_Membership extends FW_Extension {
 			FW_Membership_Admin_Rules::init();
 			FW_Membership_Metabox::init();
 			FW_Membership_Export::init();
+			FW_Membership_Setup::init();
 		}
 	}
 }

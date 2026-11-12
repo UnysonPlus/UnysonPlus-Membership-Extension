@@ -356,7 +356,15 @@ class FW_Membership_Gifts {
 			echo '<p class="fw-mbr-notice fw-mbr-notice--error" role="alert">' . esc_html( self::$redeemed['error'] ) . '</p>';
 		}
 		if ( ! $g || ! $plan || 'sent' !== $g['status'] ) {
-			echo '<p class="fw-mbr-notice">' . esc_html( $g && 'redeemed' === $g['status'] ? __( 'This gift has already been used.', 'fw' ) : __( 'That gift code is not valid.', 'fw' ) ) . '</p>';
+			// The same wording as when the code is submitted.
+			if ( ! $g || ! $plan ) {
+				$why = __( 'That gift code is not valid.', 'fw' );
+			} elseif ( 'redeemed' === $g['status'] ) {
+				$why = __( 'This gift has already been used.', 'fw' );
+			} else {
+				$why = __( 'This gift is not ready yet, or was cancelled.', 'fw' );
+			}
+			echo '<p class="fw-mbr-notice">' . esc_html( $why ) . '</p>';
 			return (string) ob_get_clean();
 		}
 		$buyer = get_userdata( (int) $g['buyer_id'] );
