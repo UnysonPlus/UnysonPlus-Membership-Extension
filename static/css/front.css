@@ -1029,3 +1029,78 @@
 	width: 100%;
 	box-sizing: border-box;
 }
+
+/* Checkout extras: optional add-ons the buyer ticks (each changes the price). */
+.fw-mbr-checkout__extras {
+	border: 0;
+	margin: 0 0 1rem;
+	padding: 0;
+}
+.fw-mbr-checkout__extras legend {
+	font-weight: 600;
+	margin-bottom: .5rem;
+}
+.fw-mbr-checkout__extra-choice {
+	align-items: flex-start;
+	border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+	border-radius: 10px;
+	cursor: pointer;
+	display: flex;
+	gap: .7rem;
+	margin: 0 0 .6rem;
+	padding: .8rem 1rem;
+}
+.fw-mbr-checkout__extra-choice:has(input:checked) {
+	border-color: currentColor;
+}
+.fw-mbr-checkout__extra-choice input {
+	margin-top: .3rem;
+}
+.fw-mbr-checkout__extra-choice em {
+	font-style: normal;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.fw-mbr-checkout__extra-choice small {
+	display: block;
+	opacity: .8;
+}
+
+/* A slider extra: choose how much (a video length, a number of seats), priced per step. */
+.fw-mbr-checkout__extra-range {
+	cursor: default;
+}
+.fw-mbr-checkout__extra-range.is-on {
+	border-color: currentColor;
+}
+.fw-mbr-checkout__extra-range > span {
+	display: flex;
+	flex: 1;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: .2rem .6rem;
+}
+.fw-mbr-checkout__extra-range output {
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+.fw-mbr-checkout__extra-range em {
+	margin-left: auto;
+}
+.fw-mbr-checkout__extra-range input[type=range] {
+	accent-color: var(--color-primary, #2f6fed);
+	cursor: pointer;
+	flex-basis: 100%;
+	margin: .4rem 0 0;
+	width: 100%;
+}
+.fw-mbr-checkout__range-ends {
+	display: flex;
+	flex-basis: 100%;
+	font-size: .8em;
+	justify-content: space-between;
+	opacity: .7;
+}
+.fw-mbr-checkout__extra-range small {
+	flex-basis: 100%;
+}

@@ -73,7 +73,46 @@ class FW_Membership_Coupons {
 		}
 		$t   = FW_Membership_Installer::table( 'coupons' );
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE code = %s", $code ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL
-		return $row ? self::shape( $row ) : null;
+		return $row ? self::shape( $row ) : self::shared( $code );
+	}
+
+	/**
+	 * A code from the shared Payments list, in this module's shape. Only while Membership takes
+	 * its payments through the shared system (that is where its uses are counted). Membership's
+	 * own code wins when both lists have the same one.
+	 *
+	 * @param string $code
+	 *
+	 * @return array|null With `shared` => true and id 0.
+	 */
+	private static function shared( $code ) {
+		if ( ! class_exists( 'FW_Payments_Coupons' ) || ! class_exists( 'FW_Membership_Gateways' ) || ! FW_Membership_Gateways::uses_shared() ) {
+			return null;
+		}
+		$c = FW_Payments_Coupons::find( $code );
+		if ( ! $c ) {
+			return null;
+		}
+		return array(
+			'id'           => 0,
+			'shared'       => true,
+			'code'         => $c['code'],
+			'description'  => $c['note'],
+			'type'         => $c['type'],
+			'amount'       => $c['amount'],
+			'currency'     => '' !== $c['currency'] ? $c['currency'] : FW_Payments_Gateways::currency(),
+			'duration'     => $c['duration'],
+			'months'       => $c['months'],
+			'plans'        => array(),
+			'max_uses'     => $c['max_uses'],
+			'per_user'     => $c['per_customer'],
+			'uses'         => FW_Payments_Coupons::uses( $c['id'] ),
+			'starts_at'    => $c['starts_at'],
+			'expires_at'   => $c['expires_at'],
+			'status'       => $c['status'],
+			'batch'        => '',
+			'gateway_refs' => array(),
+		);
 	}
 
 	/**
@@ -243,6 +282,17 @@ class FW_Membership_Coupons {
 		$no = new WP_Error( 'fw_mbr_coupon', __( 'That code is not valid.', 'fw' ) );
 		if ( ! $c || 'active' !== $c['status'] ) {
 			return $no;
+		}
+		// A code from the shared list: its own rules decide (who may take it, what it applies to, its uses).
+		if ( ! empty( $c['shared'] ) ) {
+			$user = $user_id ? get_userdata( (int) $user_id ) : null;
+			$r    = FW_Payments_Coupons::check( $c['code'], array(
+				'source'   => 'membership',
+				'currency' => (string) $price['currency'],
+				'items'    => array( array( 'type' => 'plan', 'id' => (int) $plan['id'], 'amount' => (float) ( $price['amount'] ?? 0 ) ) ),
+				'customer' => array( 'user_id' => (int) $user_id, 'email' => $user ? (string) $user->user_email : '' ),
+			) );
+			return is_wp_error( $r ) ? new WP_Error( 'fw_mbr_coupon', $r->get_error_message() ) : true;
 		}
 		$now = current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp
 		if ( $c['starts_at'] && strtotime( $c['starts_at'] ) > $now ) {

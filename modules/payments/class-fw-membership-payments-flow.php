@@ -171,10 +171,22 @@ class FW_Membership_Payments_Flow {
 				'replaces'   => $replaces,
 				'quote'      => array_intersect_key( $q, array_flip( array( 'amount', 'due', 'discount', 'discount_recurring', 'subtotal', 'tax', 'tax_rate', 'tax_label', 'tax_inclusive', 'total', 'renewal_total' ) ) ),
 				'tax_info'   => array_intersect_key( $args, array_flip( array( 'country', 'region', 'vat_number' ) ) ),
+				'extras'     => class_exists( 'FW_Membership_Extras' ) ? FW_Membership_Extras::record( (array) ( $price['extras'] ?? array() ) ) : array(),
 			),
 		) );
 		if ( ! $pid ) {
 			return new WP_Error( 'fw_mbr_db', __( 'The payment could not be started. Please try again.', 'fw' ) );
+		}
+		// The membership remembers the extras it was bought with (renewals, the member's record).
+		$m_row = FW_Membership_Memberships::get( $mid );
+		if ( $m_row ) {
+			$m_meta = (array) $m_row['meta'];
+			if ( ! empty( $price['extras'] ) && class_exists( 'FW_Membership_Extras' ) ) {
+				$m_meta['extras'] = FW_Membership_Extras::record( $price['extras'] );
+			} else {
+				unset( $m_meta['extras'] );
+			}
+			FW_Membership_Memberships::update( $mid, array( 'meta' => $m_meta ) );
 		}
 
 		$urls = array(

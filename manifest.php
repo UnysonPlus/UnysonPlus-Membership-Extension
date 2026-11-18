@@ -14,6 +14,53 @@ $manifest['description'] = __(
 /**
  * Changelog ----------------------------------------------------------------
  *
+ * 1.0.35 - A new install starts on the shared Payments system: the first time the payment
+ *         settings are opened on a site with no provider set up and no payment taken,
+ *         Payments is switched on and chosen (FW_Membership_Gateways::maybe_default_engine();
+ *         filter unysonplus_membership_new_install_shared). A site that already takes
+ *         payments its own way is not touched. While on the shared system, checkout also
+ *         accepts codes from the shared coupon list (Payments, Coupons), which can be limited
+ *         to memberships or to named plans ("plan:5"); Membership's own code wins when both
+ *         lists have the same one.
+ *
+ * 1.0.34 - Membership can take payments through the shared Payments system. A new "Payment
+ *         system" choice in Payments, Settings: Membership's own payment settings (the
+ *         default, nothing changes) or the shared Payments extension, where one set of
+ *         provider keys and one list of payments serve the whole site. Only NEW purchases
+ *         follow the choice. Memberships that already renew stay on the side they were
+ *         started on, whichever way the choice is set later, so nobody is billed twice and
+ *         switching back is safe. Done by a bridge that wraps each gateway
+ *         (FW_Membership_Gateway_Bridge); the rest of Membership still talks to the same
+ *         gateway interface and FW_Membership_Payments_Flow. New in settings: `engine`
+ *         (own | payments); FW_Membership_Gateways::uses_shared().
+ *
+ * 1.0.33 - Slider extras. A checkout extra can now be a "Slider" instead of a tick-box, so
+ *         the buyer chooses how much: a video length, a number of seats. The plan sets
+ *         what is included, the maximum, the step and the price per step, shown as a time
+ *         (1:30) or a number with a unit. The price beside the slider follows the thumb,
+ *         letting go refreshes the totals, and the payment, membership and invoice record
+ *         the chosen value ("Video length (3:00)"). Links can preset it with
+ *         extras_qty[id]=value. The checkout also drops "No end date" on one-time prices.
+ *
+ * 1.0.32 - Checkout extras. A plan can offer optional add-ons the buyer ticks at the checkout
+ *         (Plans -> edit -> Checkout extras): each has a label, a short description, an
+ *         amount and how it is paid, "Once" (with the first payment; on a repeating price
+ *         it joins the setup fee) or "Each period" (added to every payment of a repeating
+ *         price). The chosen extras are applied to the price before the quote, so coupons,
+ *         tax, the totals and the PayPal / Stripe payment all include them; the checkout
+ *         lists them, the payment and the membership record them (meta extras), the
+ *         invoice shows a line for each and the member's record names them. They live in
+ *         the plan settings, so the Import / Export set-up file carries them. Class
+ *         FW_Membership_Extras; request extras[]=<id>; hook
+ *         unysonplus_membership_plan_main_panels for panels in the plan editor.
+ *
+ * 1.0.31 - Optional password for one-time purchases. At the checkout, a logged-out buyer of a
+ *         one-time price (once, lifetime, free) or a gift may leave the password empty: the
+ *         account is still made (the payment and receipt belong to it) and WordPress emails a
+ *         link to set a password. Repeating prices still require one (the buyer logs in to
+ *         manage or cancel). FW_Membership_Checkout::password_optional(), filter
+ *         unysonplus_membership_checkout_password_optional.
+ *
  * 1.0.29 - Import / Export. Membership -> Import becomes Import / Export: download the
  *         members (CSV) or the whole set-up (JSON: every plan and price, every access rule,
  *         and the settings: member pages, emails, profile fields, modules, payments, paywall,
@@ -298,7 +345,7 @@ $manifest['description'] = __(
  *         expires memberships whose end date has passed.
  */
 
-$manifest['version']    = '1.0.29';
+$manifest['version']    = '1.0.35';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';

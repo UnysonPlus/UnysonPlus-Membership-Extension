@@ -44,6 +44,36 @@ When the CRM shell changes (sidebar, top bar, focus mode, responsive), port the 
 Membership-only styles sit at the END of `app.css`, below the marked divider — add new ones there.
 (A shared framework-level app shell is a candidate refactor; agree it with the CRM owner first.)
 
+## Payments: two sides, one interface
+
+(Since 1.0.35: a NEW install starts on the shared side, decided once by
+`FW_Membership_Gateways::maybe_default_engine()` when the payment settings are first opened; and
+`FW_Membership_Coupons::get_by_code()` falls back to the shared coupon list while on the shared side,
+returning a coupon with `shared => true` and id 0 whose rules and uses belong to `FW_Payments_Coupons`.)
+
+While the shared **Payments** extension is active, every built-in gateway is wrapped in
+`FW_Membership_Gateway_Bridge` (`modules/payments/class-fw-membership-gateway-bridge.php`). It is a
+router, not a replacement:
+
+- **New purchases** follow Payments → Settings → *Payment system* (`engine`: `own` | `payments`,
+  default `own`; `FW_Membership_Gateways::uses_shared()`). `payments` sends them through
+  `FW_Payments` / `FW_Payments_Subscriptions`.
+- **Existing records stay on the side they were made on**, whatever the setting says now: a
+  membership whose `gateway_subscription_id` starts with `ps_` is a shared subscription, a payment
+  row with `meta.pay_charge` is a shared charge; everything else is the wrapped (legacy) gateway's.
+  Never "migrate" a running subscription between sides.
+- The rest of Membership must keep talking to the `FW_Membership_Gateway` interface and
+  `FW_Membership_Payments_Flow` only. Do not call `FW_Payments*` from anywhere but the bridge, and
+  do not branch on the engine elsewhere.
+- The bridge hears Payments' hooks and turns them into the same `Flow` calls the legacy gateways
+  make (`paid`, `renewed`, `renewal_failed`, `cancel_scheduled`, `ended`, `resumed`, `unpaused`,
+  `refunded`, `extra_charge`). While Membership itself is asking for a change, the bridge ignores
+  the hook that change fires (`self::$asking`), so nothing is sent back where it came from.
+- Membership's own gateway keys stay in `fw_ext_membership_payments` while the shared system is in
+  use: memberships from before the switch still need them, and its own webhook address still
+  serves them. `save_settings()` must never drop them.
+- A new gateway method on the interface needs its routing in the bridge in the same change.
+
 ## The CRM connection
 
 Membership never requires the CRM and **never touches `fw_crm_*` tables or files in `crm/`**. It

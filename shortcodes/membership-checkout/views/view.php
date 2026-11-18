@@ -121,11 +121,19 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 	<div class="fw-mbr-checkout__summary">
 		<div>
 			<strong><?php echo esc_html( $plan['name'] ); ?></strong>
-			<span><?php echo esc_html( $is_gift ? __( 'A gift: one payment, nothing renews', 'fw' ) : FW_Membership_Plans::duration_label( $plan ) ); ?></span>
+			<?php
+			// "No end date" says nothing about a one-time purchase (a single item, a one-off service).
+			$dur = $is_gift ? __( 'A gift: one payment, nothing renews', 'fw' ) : FW_Membership_Plans::duration_label( $plan );
+			if ( ! $is_gift && 'once' === $price['billing'] && empty( $plan['duration_value'] ) && empty( $plan['fixed_end_date'] ) ) {
+				$dur = '';
+			}
+			?>
+			<?php if ( '' !== $dur ) : ?><span><?php echo esc_html( $dur ); ?></span><?php endif; ?>
 		</div>
 		<div style="text-align:right">
 			<?php
-			$label = FW_Membership_Plans::price_label( $price );
+			// The plan's own price; ticked extras are listed under it.
+			$label = FW_Membership_Plans::price_label( isset( $price['base'] ) ? $price['base'] : $price );
 			if ( $is_gift && in_array( $price['billing'], array( 'day', 'week', 'month', 'year' ), true ) ) {
 				// A gift is paid once and covers one period of a repeating price.
 				$n     = max( 1, (int) $price['interval_count'] );
@@ -144,11 +152,19 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 			<?php endif; ?>
 		</div>
 	</div>
-	<?php if ( $quote['discount'] > 0 || $quote['tax'] > 0 || $quote['setup_fee'] > 0 || ( $quote['recurring'] && $quote['trial_days'] > 0 ) ) : ?>
+	<?php
+	$picked     = (array) ( $price['extras'] ?? array() );
+	$base_price = isset( $price['base'] ) ? $price['base'] : $price;
+	$own_setup  = (float) $base_price['setup_fee'];
+	?>
+	<?php if ( $picked || $quote['discount'] > 0 || $quote['tax'] > 0 || $quote['setup_fee'] > 0 || ( $quote['recurring'] && $quote['trial_days'] > 0 ) ) : ?>
 		<table class="fw-mbr-checkout__lines">
 			<tbody>
-				<?php if ( $quote['setup_fee'] > 0 ) : ?>
-					<tr><th scope="row"><?php esc_html_e( 'Setup fee', 'fw' ); ?></th><td><?php echo esc_html( $money( $quote['setup_fee'] ) ); ?></td></tr>
+				<?php foreach ( $picked as $extra ) : ?>
+					<tr class="fw-mbr-checkout__extra"><th scope="row"><?php echo esc_html( $extra['label'] ); ?></th><td><?php echo esc_html( FW_Membership_Extras::price_label( $extra, $base_price ) ); ?></td></tr>
+				<?php endforeach; ?>
+				<?php if ( $own_setup > 0 ) : ?>
+					<tr><th scope="row"><?php esc_html_e( 'Setup fee', 'fw' ); ?></th><td><?php echo esc_html( $money( $own_setup ) ); ?></td></tr>
 				<?php endif; ?>
 				<?php if ( $quote['discount'] > 0 ) : ?>
 					<tr><th scope="row"><?php echo esc_html( sprintf( __( 'Discount (%s)', 'fw' ), $quote['coupon']['code'] ?? '' ) ); ?></th><td>−<?php echo esc_html( $money( $quote['discount'] ) ); ?></td></tr>
@@ -174,21 +190,103 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 	do_action( 'unysonplus_membership_checkout_price_fields', $plan, $price, $quote );
 	$price_fields = (string) ob_get_clean();
 	$has_coupons  = ( class_exists( 'FW_Membership_Coupons' ) && ( ! $free || $quote['coupon'] ) ) || class_exists( 'FW_Membership_Gifts' ); // a gift code works here too
+	// Checkout extras offered with this plan (none for a gift or a free plan).
+	$offer      = ( ! $is_gift && 'free' !== $base_price['billing'] && class_exists( 'FW_Membership_Extras' ) ) ? FW_Membership_Extras::for_plan( $plan ) : array();
+	$picked_ids = wp_list_pluck( $picked, 'id' );
 	?>
-	<?php if ( '' !== trim( $price_fields ) || $has_coupons ) : ?>
+	<?php if ( '' !== trim( $price_fields ) || $has_coupons || $offer ) : ?>
 		<form method="get" class="fw-mbr-form fw-mbr-checkout__price" action="<?php echo esc_url( $here ); ?>">
 			<input type="hidden" name="plan" value="<?php echo esc_attr( $plan['slug'] ); ?>" />
 			<input type="hidden" name="price" value="<?php echo (int) $price['id']; ?>" />
 			<?php if ( $replacing ) : ?><input type="hidden" name="replaces" value="<?php echo (int) $replacing['id']; ?>" /><?php endif; ?>
+			<?php if ( $offer ) : ?>
+				<fieldset class="fw-mbr-checkout__extras fw-mbr-form__row">
+					<legend><?php echo esc_html( $t( 'extras_title', __( 'Add to your order', 'fw' ) ) ); ?></legend>
+					<?php foreach ( $offer as $extra ) : ?>
+						<?php if ( 'range' === $extra['type'] ) : ?>
+							<?php
+							// A slider: the plan includes `start`; every step above it costs `amount`.
+							$cur_value = $extra['start'];
+							foreach ( $picked as $pk ) {
+								if ( $pk['id'] === $extra['id'] && isset( $pk['value'] ) ) {
+									$cur_value = $pk['value'];
+								}
+							}
+							$cur_steps = (int) round( ( $cur_value - $extra['start'] ) / $extra['step'] );
+							$range_id  = 'fw-mbr-co-x-' . $extra['id'];
+							$zero      = FW_Membership_Plans::money( 0, $base_price['currency'] ? $base_price['currency'] : FW_Membership_Gateways::currency() );
+							$tpl_label = str_replace( $zero, '%s', FW_Membership_Extras::price_label( array_merge( $extra, array( 'amount' => 0 ) ), $base_price ) );
+							$values    = array();
+							for ( $v = $extra['start'], $i = 0; $v <= $extra['max'] + 1e-9 && $i < 200; $v += $extra['step'], $i++ ) {
+								$values[] = FW_Membership_Extras::format_value( $extra, $v );
+							}
+							$unit_cur  = $base_price['currency'] ? strtoupper( $base_price['currency'] ) : strtoupper( FW_Membership_Gateways::currency() );
+							?>
+							<div class="fw-mbr-checkout__extra-choice fw-mbr-checkout__extra-range<?php echo $cur_steps > 0 ? ' is-on' : ''; ?>" data-per="<?php echo esc_attr( $extra['amount'] ); ?>" data-currency="<?php echo esc_attr( $unit_cur ); ?>" data-tpl="<?php echo esc_attr( $tpl_label ); ?>" data-included="<?php esc_attr_e( 'Included', 'fw' ); ?>" data-values="<?php echo esc_attr( wp_json_encode( $values ) ); ?>">
+								<span>
+									<label for="<?php echo esc_attr( $range_id ); ?>"><strong><?php echo esc_html( $extra['label'] ); ?></strong></label>
+									<output for="<?php echo esc_attr( $range_id ); ?>" class="fw-mbr-checkout__range-value"><?php echo esc_html( FW_Membership_Extras::format_value( $extra, $cur_value ) ); ?></output>
+									<em class="fw-mbr-checkout__range-price"><?php echo esc_html( $cur_steps > 0 ? FW_Membership_Extras::price_label( array_merge( $extra, array( 'amount' => round( $extra['amount'] * $cur_steps, 2 ) ) ), $base_price ) : __( 'Included', 'fw' ) ); ?></em>
+									<input type="range" id="<?php echo esc_attr( $range_id ); ?>" name="extras_qty[<?php echo esc_attr( $extra['id'] ); ?>]" min="<?php echo esc_attr( $extra['start'] ); ?>" max="<?php echo esc_attr( $extra['max'] ); ?>" step="<?php echo esc_attr( $extra['step'] ); ?>" value="<?php echo esc_attr( $cur_value ); ?>" aria-valuetext="<?php echo esc_attr( FW_Membership_Extras::format_value( $extra, $cur_value ) ); ?>" data-start="<?php echo esc_attr( $extra['start'] ); ?>" data-step="<?php echo esc_attr( $extra['step'] ); ?>" />
+									<span class="fw-mbr-checkout__range-ends"><span><?php echo esc_html( $values[0] ); ?></span><span><?php echo esc_html( end( $values ) ); ?></span></span>
+									<small><?php echo esc_html( trim( $extra['description'] . ' ' . sprintf( __( '%1$s included, then %2$s for every %3$s more.', 'fw' ), $values[0], FW_Membership_Plans::money( $extra['amount'], $unit_cur ), FW_Membership_Extras::step_label( $extra ) ) ) ); ?></small>
+								</span>
+							</div>
+							<?php continue; ?>
+						<?php endif; ?>
+						<label class="fw-mbr-checkout__extra-choice">
+							<input type="checkbox" name="extras[]" value="<?php echo esc_attr( $extra['id'] ); ?>" <?php checked( in_array( $extra['id'], $picked_ids, true ) ); ?> onchange="this.form.submit()" />
+							<span>
+								<strong><?php echo esc_html( $extra['label'] ); ?></strong> <em><?php echo esc_html( FW_Membership_Extras::price_label( $extra, $base_price ) ); ?></em>
+								<?php if ( '' !== $extra['description'] ) : ?><small><?php echo esc_html( $extra['description'] ); ?></small><?php endif; ?>
+							</span>
+						</label>
+					<?php endforeach; ?>
+				</fieldset>
+			<?php endif; ?>
 			<?php echo $price_fields; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by the module. ?>
 			<div class="fw-mbr-checkout__coupon">
 				<?php if ( $has_coupons ) : ?>
 					<label for="fw-mbr-co-coupon"><?php esc_html_e( 'Have a code?', 'fw' ); ?></label>
 					<input type="text" id="fw-mbr-co-coupon" name="coupon" value="<?php echo esc_attr( $quote['coupon']['code'] ?? '' ); ?>" autocomplete="off" />
 				<?php endif; ?>
-				<button type="submit" class="<?php echo esc_attr( FW_Membership_Settings::button_class( true ) ); ?>"><?php echo esc_html( '' !== trim( $price_fields ) ? __( 'Update the price', 'fw' ) : __( 'Apply', 'fw' ) ); ?></button>
+				<button type="submit" class="<?php echo esc_attr( FW_Membership_Settings::button_class( true ) ); ?>"><?php echo esc_html( '' !== trim( $price_fields ) || $offer ? __( 'Update the price', 'fw' ) : __( 'Apply', 'fw' ) ); ?></button>
 			</div>
 		</form>
+	<?php endif; ?>
+	<?php if ( $offer ) : ?>
+		<script>
+		( function () {
+			// Slider extras: the value and its price follow the thumb; letting go updates the totals.
+			// Ticking or sliding reloads the page at the extras, not at the top.
+			var set = document.querySelector( '.fw-mbr-checkout__extras' );
+			if ( ! set ) { return; }
+			set.id = set.id || 'fw-mbr-co-extras';
+			var form = set.closest( 'form' );
+			function send() { form.action = form.action.split( '#' )[ 0 ] + '#' + set.id; form.submit(); }
+			// Arrow keys step a slider one notch at a time: refresh once they pause.
+			var timer;
+			function later() { clearTimeout( timer ); timer = setTimeout( send, 700 ); }
+			// The totals refresh by themselves, so the button is only needed next to a code or tax field.
+			var btn = form.querySelector( 'button[type=submit]' );
+			if ( btn && ! form.querySelector( 'input[type=text], select' ) ) { btn.style.display = 'none'; }
+			set.querySelectorAll( 'input[type=checkbox]' ).forEach( function ( c ) { c.onchange = send; } );
+			set.querySelectorAll( '.fw-mbr-checkout__extra-range' ).forEach( function ( wrap ) {
+				var input = wrap.querySelector( 'input[type=range]' ), out = wrap.querySelector( 'output' ), price = wrap.querySelector( '.fw-mbr-checkout__range-price' );
+				var values = JSON.parse( wrap.dataset.values || '[]' ), per = parseFloat( wrap.dataset.per ) || 0;
+				function paint() {
+					var steps = Math.round( ( parseFloat( input.value ) - parseFloat( input.dataset.start ) ) / parseFloat( input.dataset.step ) );
+					var text = values[ steps ] || input.value;
+					out.textContent = text;
+					input.setAttribute( 'aria-valuetext', text );
+					price.textContent = steps > 0 ? wrap.dataset.tpl.replace( '%s', wrap.dataset.currency + ' ' + ( per * steps ).toLocaleString( undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 } ) ) : wrap.dataset.included;
+					wrap.classList.toggle( 'is-on', steps > 0 );
+				}
+				input.addEventListener( 'input', paint );
+				input.addEventListener( 'change', later );
+			} );
+		}() );
+		</script>
 	<?php endif; ?>
 
 	<?php if ( ! $free && ! $gateways ) : ?>
@@ -204,6 +302,13 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 			<?php endif; ?>
 			<?php foreach ( $buyer as $bk => $bv ) : ?>
 				<input type="hidden" name="<?php echo esc_attr( $bk ); ?>" value="<?php echo esc_attr( $bv ); ?>" />
+			<?php endforeach; ?>
+			<?php foreach ( $picked as $pk ) : ?>
+				<?php if ( isset( $pk['value'] ) ) : ?>
+					<input type="hidden" name="extras_qty[<?php echo esc_attr( $pk['id'] ); ?>]" value="<?php echo esc_attr( $pk['value'] ); ?>" />
+				<?php else : ?>
+					<input type="hidden" name="extras[]" value="<?php echo esc_attr( $pk['id'] ); ?>" />
+				<?php endif; ?>
 			<?php endforeach; ?>
 			<?php
 			/** More fields in the payment form. */
@@ -224,10 +329,18 @@ $replacing = FW_Membership_Checkout::replacing( $plan );
 					<label for="fw-mbr-co-email"><?php esc_html_e( 'Email', 'fw' ); ?> <span aria-hidden="true">*</span></label>
 					<input type="email" id="fw-mbr-co-email" name="email" autocomplete="email" required />
 				</p>
-				<p class="fw-mbr-form__row">
-					<label for="fw-mbr-co-pass"><?php esc_html_e( 'Choose a password', 'fw' ); ?> <span aria-hidden="true">*</span></label>
-					<input type="password" id="fw-mbr-co-pass" name="password" autocomplete="new-password" minlength="8" required />
-				</p>
+				<?php if ( FW_Membership_Checkout::password_optional( $price ) ) : ?>
+					<p class="fw-mbr-form__row">
+						<label for="fw-mbr-co-pass"><?php esc_html_e( 'Choose a password (optional)', 'fw' ); ?></label>
+						<input type="password" id="fw-mbr-co-pass" name="password" autocomplete="new-password" minlength="8" aria-describedby="fw-mbr-co-pass-hint" />
+						<small id="fw-mbr-co-pass-hint"><?php esc_html_e( 'Leave it empty and we will email you a link to set one, so you can see your receipt later.', 'fw' ); ?></small>
+					</p>
+				<?php else : ?>
+					<p class="fw-mbr-form__row">
+						<label for="fw-mbr-co-pass"><?php esc_html_e( 'Choose a password', 'fw' ); ?> <span aria-hidden="true">*</span></label>
+						<input type="password" id="fw-mbr-co-pass" name="password" autocomplete="new-password" minlength="8" required />
+					</p>
+				<?php endif; ?>
 			<?php else : ?>
 				<?php if ( $replacing ) : ?>
 					<?php $from_plan = FW_Membership_Plans::get( $replacing['plan_id'] ); ?>

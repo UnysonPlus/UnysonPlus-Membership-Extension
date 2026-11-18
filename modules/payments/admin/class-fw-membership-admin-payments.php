@@ -20,6 +20,9 @@ class FW_Membership_Admin_Payments {
 		switch ( $action ) {
 			case 'save_payment_settings':
 				FW_Membership_Gateways::save_settings( (array) $r );
+				if ( '' !== FW_Membership_Gateways::$engine_error ) {
+					FW_Membership_Admin_Page::flash( 'error', sprintf( __( 'The shared payment system could not be switched on, so nothing changed: %s', 'fw' ), FW_Membership_Gateways::$engine_error ) );
+				}
 				FW_Membership_Admin_Page::flash( 'success', __( 'Payment settings saved.', 'fw' ) );
 				return array( 'tab' => 'payments', 'view' => 'settings' );
 
@@ -163,6 +166,8 @@ class FW_Membership_Admin_Payments {
 	}
 
 	private static function render_settings() {
+		// A new install starts on the shared Payments system (decided once, here).
+		FW_Membership_Gateways::maybe_default_engine();
 		$s     = FW_Membership_Gateways::settings();
 		$pages = get_pages( array( 'post_status' => array( 'publish', 'private', 'draft' ) ) );
 		?>
@@ -233,7 +238,36 @@ class FW_Membership_Admin_Payments {
 			/** More payment settings panels (the Tax module adds its own). */
 			do_action( 'unysonplus_membership_payment_settings_panels', $s );
 			?>
+			<?php $fw_mbr_engine = (string) ( $s['engine'] ?? 'own' ); ?>
+			<section class="fw-mbr-panel" aria-labelledby="fw-mbr-h-engine">
+				<header class="fw-mbr-panel__head">
+					<h2 id="fw-mbr-h-engine"><?php esc_html_e( 'Payment system', 'fw' ); ?></h2>
+					<?php if ( FW_Membership_Gateways::uses_shared() ) : ?>
+						<span class="fw-mbr-mstatus fw-mbr-mstatus--active"><?php esc_html_e( 'Shared', 'fw' ); ?></span>
+					<?php endif; ?>
+				</header>
+				<div class="fw-mbr-fields fw-mbr-fields--stack">
+					<p class="fw-mbr-field">
+						<label for="fw-mbr-engine"><?php esc_html_e( 'New purchases are taken by', 'fw' ); ?></label>
+						<select id="fw-mbr-engine" name="engine">
+							<option value="own" <?php selected( $fw_mbr_engine, 'own' ); ?>><?php esc_html_e( 'Membership’s own payment settings (below)', 'fw' ); ?></option>
+							<option value="payments" <?php selected( $fw_mbr_engine, 'payments' ); ?>><?php esc_html_e( 'The shared Payments system (one set-up for the whole site)', 'fw' ); ?></option>
+						</select>
+						<span class="description"><?php esc_html_e( 'The shared system keeps every payment on the site in one place, with one set of provider keys. Memberships that already renew keep renewing exactly as they do now: only new purchases change. You can switch back at any time.', 'fw' ); ?></span>
+					</p>
+					<?php if ( FW_Membership_Gateways::uses_shared() ) : ?>
+						<p><?php esc_html_e( 'The payment providers are set up in Payments → Settings. Give each provider the webhook address shown there, and keep the one you already added for Membership: it serves the memberships from before the switch.', 'fw' ); ?> <a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=fw-payments-settings' ) ); ?>"><?php esc_html_e( 'Open Payments settings', 'fw' ); ?></a></p>
+					<?php elseif ( 'payments' === $fw_mbr_engine ) : ?>
+						<p><?php esc_html_e( 'The shared Payments system is being switched on. Reload this page to finish.', 'fw' ); ?></p>
+					<?php endif; ?>
+				</div>
+			</section>
 			<?php foreach ( FW_Membership_Gateways::all() as $id => $g ) : ?>
+				<?php
+				if ( $g instanceof FW_Membership_Gateway_Bridge && FW_Membership_Gateways::uses_shared() ) {
+					continue; // set up in Payments → Settings
+				}
+				?>
 				<section class="fw-mbr-panel" aria-labelledby="fw-mbr-h-g-<?php echo esc_attr( $id ); ?>">
 					<header class="fw-mbr-panel__head">
 						<h2 id="fw-mbr-h-g-<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $g->title() ); ?></h2>

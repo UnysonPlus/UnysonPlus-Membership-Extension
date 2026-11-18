@@ -13,6 +13,7 @@
  *   class-fw-membership-invoices.php       numbered, printable invoices
  *   class-fw-membership-single-purchase.php  pay per item (one post or file, no plan)
  *   gateways/                              Stripe, PayPal, bank transfer
+ *   class-fw-membership-gateway-bridge.php  the same gateways on the shared Payments extension
  *   admin/                                 Membership → Payments (list + settings)
  *
  * The Pricing Plans and Membership Checkout elements live in the extension's shortcodes/
@@ -24,12 +25,19 @@ require_once $fw_mbr_pay_dir . '/class-fw-membership-gateways.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-payments.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-payments-flow.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-checkout.php';
+require_once $fw_mbr_pay_dir . '/class-fw-membership-extras.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-plan-change.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-invoices.php';
 require_once $fw_mbr_pay_dir . '/class-fw-membership-single-purchase.php';
 require_once $fw_mbr_pay_dir . '/gateways/class-fw-membership-gateway-stripe.php';
 require_once $fw_mbr_pay_dir . '/gateways/class-fw-membership-gateway-offline.php';
 require_once $fw_mbr_pay_dir . '/gateways/class-fw-membership-gateway-paypal.php';
+// Membership on the shared Payments extension (Payments → Settings → Payment system). The
+// listeners are added whether or not that extension is loaded yet (it may load after this
+// one): they only fire when it reports something, and only act on charges whose source is
+// "membership".
+require_once $fw_mbr_pay_dir . '/class-fw-membership-gateway-bridge.php';
+FW_Membership_Gateway_Bridge::listen();
 if ( is_admin() ) {
 	require_once $fw_mbr_pay_dir . '/admin/class-fw-membership-admin-payments.php';
 	FW_Membership_Admin_Payments::init();
@@ -37,6 +45,7 @@ if ( is_admin() ) {
 
 FW_Membership_Payments_Flow::init();
 FW_Membership_Checkout::init();
+FW_Membership_Extras::init();
 FW_Membership_Plan_Change::init();
 FW_Membership_Invoices::init();
 FW_Membership_Single_Purchase::init();

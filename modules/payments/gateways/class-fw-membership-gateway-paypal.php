@@ -164,10 +164,17 @@ class FW_Membership_Gateway_PayPal extends FW_Membership_Gateway {
 			return $pp_plan;
 		}
 		$ctx['user_action'] = 'SUBSCRIBE_NOW';
+		// The buyer's name only when there is one: an empty name encodes as a JSON list ("name":[]),
+		// which PayPal rejects as "The request JSON is not well formed".
+		$subscriber = array( 'email_address' => $user->user_email );
+		$name       = array_filter( array( 'given_name' => (string) $user->first_name, 'surname' => (string) $user->last_name ) );
+		if ( $name ) {
+			$subscriber['name'] = $name;
+		}
 		$s = $this->api( 'POST', 'v1/billing/subscriptions', array(
 			'plan_id'             => $pp_plan,
 			'custom_id'           => (string) $payment['id'],
-			'subscriber'          => array( 'email_address' => $user->user_email, 'name' => array_filter( array( 'given_name' => (string) $user->first_name, 'surname' => (string) $user->last_name ) ) ),
+			'subscriber'          => $subscriber,
 			'application_context' => $ctx,
 		), 'fw-mbr-sub-' . $payment['id'] );
 		if ( is_wp_error( $s ) ) {

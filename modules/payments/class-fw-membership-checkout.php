@@ -51,6 +51,10 @@ class FW_Membership_Checkout {
 		if ( ! $price && ! $plan['prices'] ) {
 			$price = array( 'id' => 0, 'plan_id' => $plan['id'], 'label' => '', 'amount' => 0.0, 'currency' => FW_Membership_Gateways::currency(), 'billing' => 'free', 'interval_count' => 1, 'trial_days' => 0, 'setup_fee' => 0.0, 'status' => 'active' );
 		}
+		// The checkout extras the buyer ticked, added to the price (the original stays under `base`).
+		if ( $price && class_exists( 'FW_Membership_Extras' ) ) {
+			$price = FW_Membership_Extras::apply( $plan, $price, FW_Membership_Extras::chosen( $plan ) );
+		}
 		return array( $plan, $price );
 	}
 
@@ -144,7 +148,12 @@ class FW_Membership_Checkout {
 			if ( email_exists( $email ) ) {
 				return new WP_Error( 'fw_mbr_exists', __( 'An account with this email already exists. Please log in first, then come back to this page.', 'fw' ) );
 			}
-			if ( strlen( $pass ) < 8 ) {
+			// One-time purchases may leave the password empty: the account is still made (the
+			// payment and receipt belong to it) and WordPress emails a link to set a password.
+			$emailed = '' === $pass && self::password_optional( $price );
+			if ( $emailed ) {
+				$pass = wp_generate_password( 24, true, true );
+			} elseif ( strlen( $pass ) < 8 ) {
 				return new WP_Error( 'fw_mbr_pass', __( 'Choose a password of at least 8 characters.', 'fw' ) );
 			}
 			$first   = sanitize_text_field( wp_unslash( $_POST['first_name'] ?? '' ) );
@@ -162,6 +171,9 @@ class FW_Membership_Checkout {
 				return $user_id;
 			}
 			update_user_meta( $user_id, '_fw_mbr_registered_via', 'checkout' );
+			if ( $emailed ) {
+				wp_new_user_notification( $user_id, null, 'user' ); // the "set your password" link
+			}
 			wp_set_current_user( $user_id );
 			wp_set_auth_cookie( $user_id, true );
 		}
@@ -201,6 +213,20 @@ class FW_Membership_Checkout {
 	 *
 	 * @return string An unused username from the email's local part.
 	 */
+	/**
+	 * May a logged-out buyer leave the password empty? Yes for a one-time price (once,
+	 * lifetime, free) and for a gift, which is paid once; no for a repeating price, whose
+	 * buyer logs in to manage or cancel it. Filter: unysonplus_membership_checkout_password_optional.
+	 *
+	 * @param array $price
+	 *
+	 * @return bool
+	 */
+	public static function password_optional( array $price ) {
+		$optional = ! FW_Membership_Payments::is_recurring( $price ) || ! empty( $_REQUEST['gift'] ); // phpcs:ignore WordPress.Security.NonceVerification -- read-only.
+		return (bool) apply_filters( 'unysonplus_membership_checkout_password_optional', $optional, $price );
+	}
+
 	public static function username( $email ) {
 		$base = sanitize_user( (string) strstr( $email, '@', true ), true );
 		$base = strlen( $base ) >= 3 ? substr( $base, 0, 50 ) : 'member';

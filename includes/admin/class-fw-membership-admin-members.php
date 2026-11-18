@@ -431,6 +431,9 @@ class FW_Membership_Admin_Members {
 				<div><dt><?php esc_html_e( 'Started', 'fw' ); ?></dt><dd><?php echo FW_Membership_App::date( $m['started_at'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></dd></div>
 				<div><dt><?php echo 'cancelled' === $m['status'] ? esc_html__( 'Access until', 'fw' ) : esc_html__( 'Ends', 'fw' ); ?></dt><dd><?php echo FW_Membership_App::date( $m['ends_at'], __( 'Never', 'fw' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></dd></div>
 				<div><dt><?php esc_html_e( 'Source', 'fw' ); ?></dt><dd><?php echo esc_html( self::source_label( $m['source'] ) ); ?></dd></div>
+				<?php if ( ! empty( $m['meta']['extras'] ) && class_exists( 'FW_Membership_Extras' ) ) : ?>
+					<div><dt><?php esc_html_e( 'Extras', 'fw' ); ?></dt><dd><?php echo esc_html( FW_Membership_Extras::summary( $m['meta']['extras'] ) ); ?></dd></div>
+				<?php endif; ?>
 			</dl>
 			<div class="fw-mbr-mcard__actions">
 				<details class="fw-mbr-mcard__more">

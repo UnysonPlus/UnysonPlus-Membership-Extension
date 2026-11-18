@@ -295,6 +295,10 @@ class FW_Membership_Admin_Plans {
 						</table>
 						<p><button type="button" class="button" id="fw-mbr-price-add"><?php esc_html_e( 'Add a price', 'fw' ); ?></button></p>
 					</section>
+					<?php
+					/** More panels in the plan's main column (Payments: Checkout extras). */
+					do_action( 'unysonplus_membership_plan_main_panels', $plan );
+					?>
 				</div>
 
 				<div class="fw-mbr-record__side">

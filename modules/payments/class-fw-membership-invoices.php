@@ -116,11 +116,36 @@ class FW_Membership_Invoices {
 		$total      = (float) $p['amount'];
 		$net        = ! empty( $q['tax_inclusive'] ) ? $total : $total - $tax_amount;
 		$lines      = '';
+		// Checkout extras in this payment: the first payment carries its own list; a renewal
+		// includes the membership's "each period" extras.
+		$extras = (array) ( $p['meta']['extras'] ?? array() );
+		if ( ! $extras && 'renewal' === $p['type'] && $p['membership_id'] ) {
+			$mrow   = FW_Membership_Memberships::get( $p['membership_id'] );
+			$extras = array_values( array_filter( (array) ( $mrow['meta']['extras'] ?? array() ), function ( $e ) {
+				return 'each' === ( $e['billing'] ?? '' );
+			} ) );
+		}
+		if ( 'payment' === $p['type'] && ! empty( $p['meta']['trial_days'] ) ) {
+			// A free trial: only the "once" extras were paid now.
+			$extras = array_values( array_filter( $extras, function ( $e ) {
+				return 'each' !== ( $e['billing'] ?? '' );
+			} ) );
+		}
+		$extras_sum = 0.0;
+		foreach ( $extras as $e ) {
+			$extras_sum += (float) ( $e['amount'] ?? 0 );
+		}
 		if ( isset( $q['discount'] ) && (float) $q['discount'] > 0 ) {
-			$lines .= '<tr><td>' . esc_html( $what ) . '</td><td class="n">' . $money( (float) $q['due'] ) . '</td></tr>';
+			$lines .= '<tr><td>' . esc_html( $what ) . '</td><td class="n">' . $money( (float) $q['due'] - $extras_sum ) . '</td></tr>';
+			foreach ( $extras as $e ) {
+				$lines .= '<tr><td>' . esc_html( (string) $e['label'] ) . '</td><td class="n">' . $money( (float) $e['amount'] ) . '</td></tr>';
+			}
 			$lines .= '<tr><td>' . esc_html( sprintf( __( 'Discount (%s)', 'fw' ), (string) $p['coupon'] ) ) . '</td><td class="n">−' . $money( (float) $q['discount'] ) . '</td></tr>';
 		} else {
-			$lines .= '<tr><td>' . esc_html( $what ) . '</td><td class="n">' . $money( $net ) . '</td></tr>';
+			$lines .= '<tr><td>' . esc_html( $what ) . '</td><td class="n">' . $money( $net - $extras_sum ) . '</td></tr>';
+			foreach ( $extras as $e ) {
+				$lines .= '<tr><td>' . esc_html( (string) $e['label'] ) . '</td><td class="n">' . $money( (float) $e['amount'] ) . '</td></tr>';
+			}
 		}
 		if ( $tax_amount > 0 ) {
 			$label  = (string) ( $q['tax_label'] ?? __( 'Tax', 'fw' ) );

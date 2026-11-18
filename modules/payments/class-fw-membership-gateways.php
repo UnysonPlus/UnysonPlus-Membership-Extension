@@ -227,13 +227,27 @@ class FW_Membership_Gateways {
 			 */
 			$list      = (array) apply_filters( 'unysonplus_membership_gateways', $list );
 			self::$all = array();
+			$wrap      = class_exists( 'FW_Payments' ) && class_exists( 'FW_Membership_Gateway_Bridge' );
 			foreach ( $list as $g ) {
 				if ( $g instanceof FW_Membership_Gateway && preg_match( '/^[a-z0-9_]+$/', $g->id() ) ) {
+					// While the Payments extension is active, the bridge sends each record to the side
+					// it was made on, and new purchases where the "payment system" setting says.
+					if ( $wrap && FW_Membership_Gateway_Bridge::can_wrap( $g ) ) {
+						$g = new FW_Membership_Gateway_Bridge( $g );
+					}
 					self::$all[ $g->id() ] = $g;
 				}
 			}
 		}
 		return self::$all;
+	}
+
+	/**
+	 * @return bool New purchases go through the shared Payments extension. Needs the choice in
+	 *              the settings AND that extension active: until both, everything stays as it was.
+	 */
+	public static function uses_shared() {
+		return 'payments' === ( self::settings()['engine'] ?? 'own' ) && class_exists( 'FW_Payments' ) && class_exists( 'FW_Membership_Gateway_Bridge' );
 	}
 
 	/**
@@ -260,10 +274,42 @@ class FW_Membership_Gateways {
 		} );
 	}
 
+	/**
+	 * Decide, once, which system a site's NEW purchases use, the first time its payment settings
+	 * are opened. A new install (no provider set up here, no payment taken) starts on the shared
+	 * Payments system, which is switched on for it. A site that already takes payments with
+	 * Membership's own settings stays exactly as it is.
+	 *
+	 * @return string payments | own when this call decided, '' when it was decided before.
+	 */
+	public static function maybe_default_engine() {
+		$stored = get_option( self::OPTION, null );
+		if ( is_array( $stored ) && isset( $stored['engine'] ) ) {
+			return '';
+		}
+		$new = true;
+		foreach ( (array) ( is_array( $stored ) ? ( $stored['gateways'] ?? array() ) : array() ) as $g ) {
+			if ( array_filter( (array) $g ) ) {
+				$new = false; // a provider was switched on or given keys here
+			}
+		}
+		if ( $new && class_exists( 'FW_Membership_Payments' ) && FW_Membership_Payments::count() ) {
+			$new = false;
+		}
+		/** Whether a new install starts on the shared Payments system. */
+		$new    = (bool) apply_filters( 'unysonplus_membership_new_install_shared', $new );
+		$engine = 'own';
+		if ( $new && function_exists( 'fw_ext_ensure_active' ) && current_user_can( 'manage_options' ) ) {
+			$engine = is_wp_error( fw_ext_ensure_active( 'payments' ) ) ? 'own' : 'payments';
+		}
+		update_option( self::OPTION, array_merge( is_array( $stored ) ? $stored : array(), array( 'engine' => $engine ) ) );
+		return $engine;
+	}
+
 	/** @return array { currency, checkout_page, terms_url, proration: prorate|next, gateways: id => settings } */
 	public static function settings() {
 		return array_merge(
-			array( 'currency' => 'USD', 'checkout_page' => 0, 'terms_url' => '', 'proration' => 'prorate', 'gateways' => array() ),
+			array( 'currency' => 'USD', 'checkout_page' => 0, 'terms_url' => '', 'proration' => 'prorate', 'engine' => 'own', 'gateways' => array() ),
 			(array) get_option( self::OPTION, array() )
 		);
 	}
@@ -277,6 +323,8 @@ class FW_Membership_Gateways {
 			'checkout_page' => max( 0, (int) ( $values['checkout_page'] ?? 0 ) ),
 			'terms_url'     => esc_url_raw( (string) ( $values['terms_url'] ?? '' ) ),
 			'proration'     => 'next' === ( $values['proration'] ?? '' ) ? 'next' : 'prorate',
+			// own = Membership's own gateways (as always) | payments = the shared Payments extension.
+			'engine'        => ! isset( $values['engine'] ) ? (string) ( self::settings()['engine'] ?? 'own' ) : ( 'payments' === $values['engine'] ? 'payments' : 'own' ),
 			'invoice'       => ! isset( $values['invoice'] ) ? (array) ( self::settings()['invoice'] ?? array() ) : array(
 				'prefix'   => substr( preg_replace( '/[^A-Za-z0-9_\/-]/', '', (string) ( $values['invoice']['prefix'] ?? 'INV-' ) ), 0, 20 ),
 				'business' => sanitize_text_field( (string) ( $values['invoice']['business'] ?? '' ) ),
@@ -293,6 +341,12 @@ class FW_Membership_Gateways {
 		foreach ( self::all() as $id => $g ) {
 			$in   = (array) ( $values['gateways'][ $id ] ?? array() );
 			$prev = (array) ( $old['gateways'][ $id ] ?? array() );
+			// A wrapped gateway shows no fields here (the shared system has them), but its own
+			// saved keys still serve the memberships from before the switch: keep them as they are.
+			if ( $g instanceof FW_Membership_Gateway_Bridge && ! $g->settings_fields() && self::uses_shared() ) {
+				$out['gateways'][ $id ] = $prev;
+				continue;
+			}
 			$row  = array( 'enabled' => ! empty( $in['enabled'] ) ? 1 : 0 );
 			foreach ( $g->settings_fields() as $key => $f ) {
 				$v = $in[ $key ] ?? '';
@@ -317,7 +371,20 @@ class FW_Membership_Gateways {
 			$out['gateways'][ $id ] = $row;
 		}
 		update_option( self::OPTION, $out, false );
+		self::$all = null; // the choice of payment system may have changed which gateways answer
+		// Choosing the shared system switches the Payments extension on (it loads from the next request).
+		if ( 'payments' === $out['engine'] && ! class_exists( 'FW_Payments' ) && function_exists( 'fw_ext_ensure_active' ) ) {
+			$r = fw_ext_ensure_active( 'payments' );
+			if ( is_wp_error( $r ) ) {
+				$out['engine'] = 'own';
+				update_option( self::OPTION, $out, false );
+				self::$engine_error = $r->get_error_message();
+			}
+		}
 	}
+
+	/** @var string Why the shared payment system could not be switched on, for the settings screen. */
+	public static $engine_error = '';
 
 	/** @return string The default currency (3 letters). */
 	public static function currency() {
